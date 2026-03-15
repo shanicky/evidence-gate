@@ -16,6 +16,16 @@ Treat the caller's conclusion or action as tentative until the gate returns a ve
 
 Keep the skill lightweight, selective, and non-blocking by default.
 
+## Scope
+
+This skill gates the agent's own reasoning quality — not the user's intent.
+
+It is not:
+- content moderation or policy enforcement
+- user intent classification (allow / refuse / clarify)
+- a legal, compliance, or safety advisory tool
+- a replacement for domain expertise
+
 ## Core idea
 
 Given a tentative claim or action, do three things:
