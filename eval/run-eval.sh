@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CASES_FILE="$ROOT_DIR/eval/cases.jsonl"
-SKILL_FILE="$ROOT_DIR/SKILL.md"
+JUDGE_PROTOCOL_FILE="$ROOT_DIR/references/judge-protocol.md"
+JUDGE_OUTPUT_TEMPLATE_FILE="$ROOT_DIR/references/judge-output-template.md"
+VALIDATE_SCRIPT="$ROOT_DIR/scripts/validate.py"
 OUTPUT_CSV="${OUTPUT_CSV:-$ROOT_DIR/eval/score-template.csv}"
 RESULTS_DIR="${RESULTS_DIR:-$ROOT_DIR/.context/eval-results/$(date +%Y%m%d-%H%M%S)}"
 ANTHROPIC_MODEL="${ANTHROPIC_MODEL:-}"
@@ -23,32 +25,52 @@ fi
 
 mkdir -p "$RESULTS_DIR"
 
-python3 - "$CASES_FILE" "$SKILL_FILE" "$OUTPUT_CSV" "$RESULTS_DIR" "$ANTHROPIC_API_KEY" "$ANTHROPIC_MODEL" "$ANTHROPIC_API_BASE" "$ANTHROPIC_MAX_TOKENS" "$CASE_IDS" <<'PY'
+python3 - "$CASES_FILE" "$JUDGE_PROTOCOL_FILE" "$JUDGE_OUTPUT_TEMPLATE_FILE" "$OUTPUT_CSV" "$RESULTS_DIR" "$VALIDATE_SCRIPT" "$ANTHROPIC_API_KEY" "$ANTHROPIC_MODEL" "$ANTHROPIC_API_BASE" "$ANTHROPIC_MAX_TOKENS" "$CASE_IDS" <<'PY'
 import csv
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 
 cases_path = Path(sys.argv[1])
-skill_path = Path(sys.argv[2])
-output_csv_path = Path(sys.argv[3])
-results_dir = Path(sys.argv[4])
-api_key = sys.argv[5]
-model = sys.argv[6]
-api_base = sys.argv[7].rstrip("/")
-max_tokens = int(sys.argv[8])
-case_filter_raw = sys.argv[9]
+judge_protocol_path = Path(sys.argv[2])
+judge_output_template_path = Path(sys.argv[3])
+output_csv_path = Path(sys.argv[4])
+results_dir = Path(sys.argv[5])
+validate_script_path = Path(sys.argv[6])
+api_key = sys.argv[7]
+model = sys.argv[8]
+api_base = sys.argv[9].rstrip("/")
+max_tokens = int(sys.argv[10])
+case_filter_raw = sys.argv[11]
 case_filter = {item.strip() for item in case_filter_raw.split(",") if item.strip()}
+sys.path.insert(0, str(validate_script_path.parent))
+
+from classify_tier import classify_tier  # noqa: E402
+from map_action import resolve_action  # noqa: E402
 
 prompts_dir = results_dir / "prompts"
 responses_dir = results_dir / "responses"
 prompts_dir.mkdir(parents=True, exist_ok=True)
 responses_dir.mkdir(parents=True, exist_ok=True)
 
-skill_prompt = skill_path.read_text()
+judge_protocol_text = judge_protocol_path.read_text()
+judge_output_template_text = judge_output_template_path.read_text()
+judge_system_prompt = (
+    judge_protocol_text.strip()
+    + "\n\n"
+    + judge_output_template_text.strip()
+    + "\n\n"
+    + "You are the Calibrated Judge in a Decision Assurance pipeline.\n"
+    + "The stakes tier has been pre-computed by scripts/classify_tier.py.\n"
+    + "Return ONLY the judgment JSON object as defined in the output template.\n"
+    + "Do NOT return stakes or action objects. The runtime assembles the full pipeline envelope.\n"
+    + "Use the provided stakes_tier exactly. Do not re-classify the case.\n"
+    + "Return valid JSON only."
+)
 cases = [json.loads(line) for line in cases_path.read_text().splitlines() if line.strip()]
 if case_filter:
     cases = [case for case in cases if case["id"] in case_filter]
@@ -119,7 +141,184 @@ def bool_str(value):
     return str(value).lower()
 
 
-def auto_scores(case, pipeline_output):
+def run_validation(pipeline_output):
+    completed = subprocess.run(
+        [sys.executable, str(validate_script_path)],
+        input=json.dumps(pipeline_output, ensure_ascii=False).encode("utf-8"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    stdout = completed.stdout.decode("utf-8", errors="replace").strip()
+    stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+    payload = None
+    if stdout:
+        try:
+            payload = json.loads(stdout)
+        except json.JSONDecodeError:
+            payload = {"valid": False, "violations": [f"validator returned non-JSON: {stdout}"]}
+    else:
+        payload = {"valid": False, "violations": ["validator returned empty output"]}
+    if stderr:
+        payload.setdefault("violations", []).append(f"validator stderr: {stderr}")
+    payload["exit_code"] = completed.returncode
+    return payload
+
+
+def compute_routing_decision(case, tier):
+    known_evidence = case.get("known_evidence") or []
+    if tier == "LOW" and not known_evidence:
+        return "fast_exit"
+    return "assure"
+
+
+def build_stakes(precomputed, routing_decision):
+    tier = precomputed["stakes_tier"]
+    applied_rules = precomputed.get("applied_rules") or []
+    routing_signals = [f"runtime-assisted tier={tier}"]
+    routing_signals.extend(applied_rules)
+    tier_rationale = (
+        "Runtime-assisted tier from scripts/classify_tier.py: "
+        + "; ".join(applied_rules)
+        if applied_rules
+        else "Runtime-assisted tier from scripts/classify_tier.py."
+    )
+    return {
+        "stakes_tier": tier,
+        "routing_decision": routing_decision,
+        "tier_rationale": tier_rationale,
+        "routing_signals": routing_signals,
+    }
+
+
+def normalize_fast_exit(parsed, case, precomputed):
+    tier = precomputed["stakes_tier"]
+    stakes = parsed.setdefault("stakes", {})
+    judgment = parsed.setdefault("judgment", {})
+    action = parsed.setdefault("action", {})
+
+    stakes.update(build_stakes(precomputed, "fast_exit"))
+    if "runtime-assisted fast_exit" not in stakes["routing_signals"]:
+        stakes["routing_signals"].append("runtime-assisted fast_exit")
+
+    judgment["gate_required"] = False
+    judgment["gate_reason"] = (
+        "Fast exit: LOW tier with no structured evidence items to evaluate."
+    )
+    judgment.setdefault("candidate_summary", f"Claim: {case['claim']}")
+    judgment["stakes_tier"] = tier
+    judgment["requirements"] = []
+    judgment["missing_evidence"] = []
+    judgment["conflicting_evidence"] = []
+    judgment.setdefault(
+        "sufficiency_rule",
+        "Fast exit: no structured evidence gate is required for this case.",
+    )
+    judgment["source_independence"] = {
+        "rating": "not_applicable",
+        "rationale": "Fast exit path. No evidence evaluation was required.",
+    }
+    judgment["confidence_calibration"] = {
+        "level": "not_applicable",
+        "rationale": "Fast exit path. No calibration pass was required.",
+    }
+    judgment["residual_risk"] = {
+        "description": "No meaningful residual risk recorded for this fast-exit case.",
+        "severity": "none",
+        "mitigations": [],
+    }
+    judgment["verdict"] = "PASS"
+    judgment.setdefault("allowed_next_actions", [case["claim"]])
+    judgment.setdefault("blocked_next_actions", [])
+    judgment.setdefault("fallback_behavior", "Not required. Proceed directly.")
+    judgment.setdefault("suggested_wording", case["claim"])
+    judgment["next_evidence_actions"] = []
+
+    action_result = resolve_action("PASS", tier, case.get("action_policy_override"))
+    action["governed_action"] = action_result["governed_action"]
+    action["audit_record"] = {
+        "rule_id": action_result["rule_id"],
+        "policy_source": "references/action-map.md",
+        "decision_basis": "Runtime-assisted fast exit: PASS at LOW maps to allow.",
+        "verdict": "PASS",
+        "stakes_tier": tier,
+        "required_followups": [],
+    }
+    action.setdefault(
+        "caller_instructions",
+        "Proceed directly. No evidence gate is required for this low-risk case.",
+    )
+    for stale_key in [
+        "rule_id",
+        "verdict",
+        "stakes_tier",
+        "verdict_input",
+        "stakes_tier_input",
+        "policy_source",
+        "mapping_rationale",
+        "follow_ups",
+        "advisory_notes",
+    ]:
+        action.pop(stale_key, None)
+
+    return parsed
+
+
+def extract_judgment_object(parsed):
+    if not isinstance(parsed, dict):
+        raise ValueError("Model output must be a JSON object")
+    if isinstance(parsed.get("judgment"), dict):
+        return dict(parsed["judgment"])
+    return dict(parsed)
+
+
+def assemble_pipeline(judgment, case, precomputed):
+    precomputed_tier = precomputed["stakes_tier"]
+    routing_decision = compute_routing_decision(case, precomputed_tier)
+    if routing_decision == "fast_exit":
+        return normalize_fast_exit({}, case, precomputed)
+
+    judgment["stakes_tier"] = precomputed_tier
+    judgment["gate_required"] = True
+    model_verdict = judgment.get("verdict")
+    if model_verdict is None:
+        raise ValueError("Model output is missing verdict")
+
+    action_result = resolve_action(
+        model_verdict,
+        precomputed_tier,
+        case.get("action_policy_override"),
+    )
+    followups = judgment.get("next_evidence_actions")
+    if not isinstance(followups, list):
+        followups = []
+
+    decision_basis = (
+        f"Runtime-assisted mapping: {model_verdict} at {precomputed_tier} maps to "
+        f"{action_result['governed_action']} via scripts/map_action.py."
+    )
+    if action_result.get("override_applied"):
+        decision_basis += " A stricter caller override was applied."
+
+    return {
+        "stakes": build_stakes(precomputed, "assure"),
+        "judgment": judgment,
+        "action": {
+            "governed_action": action_result["governed_action"],
+            "audit_record": {
+                "rule_id": action_result["rule_id"],
+                "policy_source": "references/action-map.md",
+                "decision_basis": decision_basis,
+                "verdict": model_verdict,
+                "stakes_tier": precomputed_tier,
+                "required_followups": followups,
+            },
+            "caller_instructions": judgment.get("fallback_behavior", ""),
+        },
+    }
+
+
+def auto_scores(case, pipeline_output, validation_result):
     judgment = pipeline_output["judgment"]
     action = pipeline_output["action"]
     stakes = pipeline_output["stakes"]
@@ -175,6 +374,8 @@ def auto_scores(case, pipeline_output):
     ) else "0"
     verdict_quality = "2" if judgment["verdict"] == case["expected_verdict"] else "0"
     action_quality = "2" if action["governed_action"] == case["expected_action"] else "0"
+    validation_pass = "true" if validation_result.get("valid") else "false"
+    invariant_robustness = "2" if validation_pass == "true" else "0"
 
     return {
         "stakes_tier": stakes["stakes_tier"],
@@ -182,34 +383,55 @@ def auto_scores(case, pipeline_output):
         "gate_required": actual_gate,
         "verdict": judgment["verdict"],
         "governed_action": action["governed_action"],
+        "validation_pass": validation_pass,
         "trigger_quality": trigger_quality,
         "stakes_routing_quality": stakes_routing_quality,
         "verdict_quality": verdict_quality,
         "action_governance_quality": action_quality,
+        "invariant_robustness": invariant_robustness,
         "mismatches": mismatches,
     }
 
 
 for case in cases:
     case_id = case["id"]
+    precomputed = classify_tier(
+        {
+            "impact_profile": case.get("impact_profile"),
+            "stakes_override": case.get("stakes_override"),
+        }
+    )
+    precomputed_tier = precomputed["stakes_tier"]
     baseline_prompt = (
         "Answer this case directly without using Decision Assurance.\n\n"
         f"Claim: {case['claim']}\n"
         f"Working context: {case['working_context']}\n"
         f"Execution mode: {case['execution_mode']}\n"
+        f"Impact profile: {json.dumps(case.get('impact_profile'), ensure_ascii=False)}\n"
+        f"Stakes override: {json.dumps(case.get('stakes_override'), ensure_ascii=False)}\n"
+        f"Action policy override: {json.dumps(case.get('action_policy_override'), ensure_ascii=False)}\n"
         f"Known evidence: {json.dumps(case['known_evidence'], ensure_ascii=False)}\n"
     )
-    skill_prompt_input = {
-        "claim": case["claim"],
-        "working_context": case["working_context"],
-        "execution_mode": case["execution_mode"],
-        "known_evidence": case["known_evidence"],
-        "impact_profile": case.get("impact_profile"),
-    }
+    judge_input = {}
+    for key in [
+        "claim",
+        "claim_type",
+        "domain",
+        "working_context",
+        "execution_mode",
+        "target_strength",
+        "known_evidence",
+        "alternatives_checked",
+        "available_tools",
+        "policy_overrides",
+    ]:
+        if key in case:
+            judge_input[key] = case[key]
+    judge_input["stakes_tier"] = precomputed_tier
     skill_user_prompt = (
-        "Evaluate this case with Decision Assurance.\n"
-        "Return only the final pipeline output JSON and no surrounding prose.\n\n"
-        f"{json.dumps(skill_prompt_input, ensure_ascii=False, indent=2)}"
+        "Evaluate this case as the Calibrated Judge in Decision Assurance.\n"
+        "Return only the judgment JSON object and no surrounding prose.\n\n"
+        f"{json.dumps(judge_input, ensure_ascii=False, indent=2)}"
     )
 
     (prompts_dir / f"{case_id}.baseline.txt").write_text(baseline_prompt)
@@ -232,8 +454,47 @@ for case in cases:
     if skill_row is None:
         continue
 
+    if compute_routing_decision(case, precomputed_tier) == "fast_exit":
+        synthetic_response = "Runtime fast exit: judge call skipped."
+        (responses_dir / f"{case_id}.skill.txt").write_text(synthetic_response)
+        notes = [
+            f"Raw response: {responses_dir / f'{case_id}.skill.txt'}",
+            "skill call skipped: runtime fast_exit",
+        ]
+        try:
+            parsed = assemble_pipeline({}, case, precomputed)
+            (responses_dir / f"{case_id}.skill.json").write_text(
+                json.dumps(parsed, indent=2, ensure_ascii=False)
+            )
+            validation = run_validation(parsed)
+            scored = auto_scores(case, parsed, validation)
+            for key in [
+                "stakes_tier",
+                "routing_decision",
+                "gate_required",
+                "verdict",
+                "governed_action",
+                "validation_pass",
+                "trigger_quality",
+                "stakes_routing_quality",
+                "verdict_quality",
+                "action_governance_quality",
+                "invariant_robustness",
+            ]:
+                skill_row[key] = scored[key]
+            if scored["mismatches"]:
+                notes.extend(scored["mismatches"])
+            if not validation.get("valid"):
+                notes.extend(validation.get("violations", []))
+        except Exception as exc:  # noqa: BLE001
+            skill_row["validation_pass"] = "false"
+            skill_row["invariant_robustness"] = "0"
+            notes.append(f"pipeline assembly failed: {exc}")
+        skill_row["notes"] = " | ".join(notes)
+        continue
+
     try:
-        skill_response = call_anthropic(skill_prompt, skill_user_prompt)
+        skill_response = call_anthropic(judge_system_prompt, skill_user_prompt)
         (responses_dir / f"{case_id}.skill.txt").write_text(skill_response)
     except Exception as exc:  # noqa: BLE001
         skill_row["notes"] = f"skill API call failed: {exc}"
@@ -242,25 +503,34 @@ for case in cases:
     notes = [f"Raw response: {responses_dir / f'{case_id}.skill.txt'}"]
     try:
         parsed = extract_json(skill_response)
+        judgment = extract_judgment_object(parsed)
+        parsed = assemble_pipeline(judgment, case, precomputed)
         (responses_dir / f"{case_id}.skill.json").write_text(
             json.dumps(parsed, indent=2, ensure_ascii=False)
         )
-        scored = auto_scores(case, parsed)
+        validation = run_validation(parsed)
+        scored = auto_scores(case, parsed, validation)
         for key in [
             "stakes_tier",
             "routing_decision",
             "gate_required",
             "verdict",
             "governed_action",
+            "validation_pass",
             "trigger_quality",
             "stakes_routing_quality",
             "verdict_quality",
             "action_governance_quality",
+            "invariant_robustness",
         ]:
             skill_row[key] = scored[key]
         if scored["mismatches"]:
             notes.extend(scored["mismatches"])
+        if not validation.get("valid"):
+            notes.extend(validation.get("violations", []))
     except Exception as exc:  # noqa: BLE001
+        skill_row["validation_pass"] = "false"
+        skill_row["invariant_robustness"] = "0"
         notes.append(f"skill JSON parse failed: {exc}")
 
     skill_row["notes"] = " | ".join(notes)
