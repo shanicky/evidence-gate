@@ -1,5 +1,7 @@
 # Decision Assurance Action Map
 
+<!-- This table is duplicated inline in SKILL.md §Action Governor. Keep both in sync. -->
+
 Use this fixed mapping from `(verdict, stakes_tier)` to `governed_action`.
 
 | verdict | LOW | MEDIUM | HIGH | CRITICAL |

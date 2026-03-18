@@ -373,13 +373,8 @@ Verdict boundary rules:
 - if at least one mandatory requirement is satisfied and advisory output is
   still useful, prefer `SOFT_PASS` over `BLOCK`
 - if the missing piece is specialist or delegated approval authority, use
-  `ESCALATE`, not `BLOCK`
-- tax correctness, MIL-STD compliance, and production security-exception
-  approval are named specialist-authority cases
-- finance freeze actions with partial support and ordinary review gaps are
-  usually `SOFT_PASS`, not `ESCALATE`
-- shared-service staging changes with one legitimate support signal and
-  missing coordination are usually `SOFT_PASS`, not `BLOCK`
+  `ESCALATE`, not `BLOCK` (see `references/judge-protocol.md` for named
+  specialist-authority domains and worked examples)
 
 ### 3. Action Governor
 
@@ -419,6 +414,8 @@ Important defaults:
 The action map is a lookup table. The governor must output exactly the cell
 value from the map. It must not adjust the result based on its own judgment.
 `PASS` at any tier, including `CRITICAL`, maps to `allow`.
+
+<!-- This table is duplicated in references/action-map.md. Keep both in sync. -->
 
 Inline action map:
 

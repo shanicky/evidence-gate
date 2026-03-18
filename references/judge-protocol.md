@@ -3,6 +3,21 @@
 Use this protocol when embedding the Calibrated Judge inside the Decision
 Assurance pipeline or when invoking the judge directly.
 
+## Table of contents
+
+- [Goal](#goal)
+- [Candidate schema](#candidate-schema)
+- [Evidence item schema](#evidence-item-schema)
+- [Requirement schema](#requirement-schema)
+- [Additional judgment outputs](#additional-judgment-outputs)
+- [Evidence evaluation pitfalls](#evidence-evaluation-pitfalls)
+- [Tool skepticism](#tool-skepticism)
+- [Tier-sensitive sufficiency](#tier-sensitive-sufficiency)
+- [Verdict interpretation](#verdict-interpretation)
+- [Fast-exit rule](#fast-exit-rule)
+- [Canonical output](#canonical-output)
+- [Minimal examples](#minimal-examples)
+
 ## Goal
 
 The judge takes a tentative claim or action plus the current `stakes_tier`
