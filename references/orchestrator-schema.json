@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DecisionAssuranceOrchestratorOutput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "final_verdict",
+    "rounds",
+    "collection_log",
+    "final_pipeline_output"
+  ],
+  "properties": {
+    "final_verdict": {
+      "type": "string",
+      "enum": ["PASS", "SOFT_PASS", "BLOCK", "CONFLICT", "ESCALATE"]
+    },
+    "rounds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "collection_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "round",
+          "collectors_dispatched",
+          "evidence_collected",
+          "intermediate_verdict"
+        ],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "collectors_dispatched": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_collected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "intermediate_verdict": {
+            "type": "string",
+            "enum": ["PASS", "SOFT_PASS", "BLOCK", "CONFLICT", "ESCALATE"]
+          }
+        }
+      }
+    },
+    "final_pipeline_output": {
+      "$ref": "./pipeline-schema.json"
+    }
+  }
+}

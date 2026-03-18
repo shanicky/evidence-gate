@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DecisionAssurancePolicyPack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["policy_pack"],
+  "properties": {
+    "policy_pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "domain", "description"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tier_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["match", "minimum_tier"],
+            "properties": {
+              "match": {
+                "$ref": "#/$defs/matchObject"
+              },
+              "minimum_tier": {
+                "type": "string",
+                "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+              }
+            }
+          }
+        },
+        "requirement_library": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "description",
+              "mandatory",
+              "acceptable_kinds",
+              "applies_when"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mandatory": {
+                "type": "boolean"
+              },
+              "acceptable_kinds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "applies_when": {
+                "$ref": "#/$defs/matchObject"
+              }
+            }
+          }
+        },
+        "action_map_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["match", "override_action", "rationale"],
+            "properties": {
+              "match": {
+                "$ref": "#/$defs/matchObject"
+              },
+              "override_action": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "allow_advisory",
+                  "require_human",
+                  "block",
+                  "escalate"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tool_skepticism_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tool_type", "override_skepticism", "rationale"],
+            "properties": {
+              "tool_type": {
+                "type": "string",
+                "enum": [
+                  "deterministic_check",
+                  "controlled_test",
+                  "observational_query",
+                  "search_retrieval",
+                  "model_inference",
+                  "human_report"
+                ]
+              },
+              "override_skepticism": {
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              },
+              "rationale": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "matchValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "matchObject": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/matchValue"
+      }
+    }
+  }
+}
