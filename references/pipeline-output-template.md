@@ -92,3 +92,5 @@ Return a single JSON object with this exact top-level shape:
 - For fast exit, set `judgment.residual_risk.severity = none` and keep
   `judgment.residual_risk.mitigations` empty.
 - Keep `action.governed_action` aligned with `action-map.md`.
+- Use exact `VERDICT:TIER` format for `action.audit_record.rule_id`, such as
+  `SOFT_PASS:HIGH` or `PASS:CRITICAL`.

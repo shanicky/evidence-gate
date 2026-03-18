@@ -12,6 +12,8 @@ The router produces a tiered answer to two questions:
 2. Should the pipeline fast-exit, or should it run the judge and governor?
 
 The router is deterministic, single-pass, and stateless.
+When local script execution is available, `scripts/classify_tier.py` is the
+runtime authority for `stakes_tier`.
 
 ## Input signals
 
@@ -133,13 +135,19 @@ Return one of:
 
 ### `fast_exit`
 
-Use `fast_exit` only when:
+Use `fast_exit` only when all of these are true:
 
-- `stakes_tier = LOW`
-- the task is reversible or bounded
-- the caller is not presenting a factual conclusion, diagnosis, safety
-  assertion, or action recommendation as settled
-- no `policy_overrides` force assurance
+1. `stakes_tier = LOW`
+2. the task is reversible or bounded
+3. `known_evidence` is empty or absent (no structured evidence items
+   provided)
+4. the caller is not presenting a factual conclusion, diagnosis, safety
+   assertion, or action recommendation as settled
+5. no `policy_overrides` force assurance
+
+If `known_evidence` contains one or more items, always route to `assure`
+regardless of tier.
+Evidence items exist to be evaluated.
 
 When the router returns `fast_exit`, the downstream output must still preserve
 the full pipeline shape:
@@ -156,74 +164,72 @@ case where policy or claim strength still warrants structured evidence review.
 ## Tier classification algorithm
 
 Classify tier using impact_profile dimensions only. Do not adjust tier based
-on domain keywords, evidence quality, execution mode, or absence of evidence.
+on domain keywords, execution mode, evidence gaps, or claim content.
+When local script execution is available, run `scripts/classify_tier.py` and
+use its output directly.
+The pseudocode below is the reference specification that the script
+implements. Follow it step by step.
 
-Step 1: apply this bounded-case shortcut first.
+```text
+function classify_tier(impact_profile, stakes_override):
 
-If all of these are true, classify the case as `LOW` immediately:
+  scope = impact_profile.scope
+  reversibility = impact_profile.reversibility
+  blast_radius = impact_profile.blast_radius
+  affected_assets = impact_profile.affected_assets
 
-- `scope` in `{local, team}`
-- `blast_radius = isolated`
-- `reversibility` in `{easy, moderate}`
+  // Step 1: bounded shortcut
+  if scope in {local, team}
+     AND blast_radius == isolated
+     AND reversibility in {easy, moderate}:
+    computed = LOW
+    goto step3
 
-Do not promote this bounded combination to `MEDIUM` just because
-`reversibility = moderate`.
+  // Step 2: highest-impact dimension
+  if scope in {production, external}
+     AND blast_radius in {multi_service, org_wide}
+     AND affected_assets indicate shared root-of-trust infrastructure:
+    computed = CRITICAL
+  else if scope == external
+       OR reversibility == irreversible
+       OR blast_radius == org_wide:
+    computed = CRITICAL
+  else if scope == production
+       OR reversibility == hard
+       OR blast_radius == multi_service:
+    computed = HIGH
+  else if scope == service
+       OR blast_radius == single_service
+       OR reversibility == moderate:
+    computed = MEDIUM
+  else:
+    computed = LOW
 
-Step 2: otherwise classify by highest remaining impact dimension.
+  step3:
+  // Step 3: stakes_override can only raise
+  if stakes_override is present AND rank(stakes_override) > rank(computed):
+    computed = stakes_override
 
-| Condition | Tier |
-| --- | --- |
-| `scope = external` OR `reversibility = irreversible` OR `blast_radius = org_wide` | `CRITICAL` |
-| `scope = production` OR `reversibility = hard` OR `blast_radius = multi_service` | `HIGH` |
-| `scope = service` OR `blast_radius = single_service` OR `reversibility = moderate` | `MEDIUM` |
+  // Step 4: ceiling (mandatory, overrides even stakes_override)
+  ceiling = null
+  if blast_radius in {isolated, team} AND scope in {service, team}:
+    ceiling = MEDIUM
+    if reversibility in {easy, moderate}:
+      ceiling = LOW
+  else if blast_radius == single_service:
+    ceiling = HIGH
 
-If none of the rows above match, use `LOW`.
+  if ceiling is not null:
+    final = min(computed, ceiling)
+  else:
+    final = computed
 
-Step 3: if `stakes_override` is present and higher, use the override.
+  return final
+```
 
-Step 4: do not adjust. Domain sensitivity, `execution_mode`, evidence gaps,
-and claim content affect `routing_decision`, not tier.
-
-## Tier ceiling rules
-
-Apply these ceilings after the base classification and after any higher
-`stakes_override`.
-
-The ceiling is mandatory.
-If the base classification is higher than the ceiling, replace it with the
-ceiling.
-Final tier = `min(base tier, applicable ceiling)`.
-Do not keep or justify a higher tier once a ceiling applies.
-
-When `blast_radius` is `isolated` or `team` and `scope` is `service` or
-`team`:
-
-- tier ceiling is `MEDIUM` regardless of domain keywords
-- if `reversibility` is also `easy` or `moderate`, tier ceiling is `LOW`
-
-When `blast_radius = single_service` and `scope` is not `org_wide`:
-
-- tier ceiling is `HIGH` regardless of domain keywords
-
-Domain sensitivity (`security`, `compliance`, `finance`, `medical`,
-`military`) affects `routing_decision` (`assure` vs `fast_exit`) and may
-support an `ESCALATE` verdict later, but it does not raise the tier ceiling.
-
-Worked examples:
-
-- A team-scoped, isolated cleanup or deletion with `reversibility = moderate`
-  stays `LOW` even if execution is automatic. Auto execution may force
-  `assure`, but it does not raise tier.
-- A team-scoped, isolated standards or compliance assertion can stay `LOW`
-  even when it routes to `assure`. Standards language affects routing, not
-  tier.
-- Missing approval, backup, regeneration, or owner-confirmation evidence does
-  not raise tier. Those are judge concerns, not router inputs.
-- Team scope by itself does not raise `LOW` to `MEDIUM` when blast radius is
-  still isolated.
-- A production security-exception request is usually `HIGH`, not `CRITICAL`,
-  unless the impact profile itself reaches `external`, `irreversible`, or
-  `org_wide`.
+Do not adjust tier for any reason not in this algorithm.
+Domain keywords, execution_mode, evidence gaps, and claim content affect
+`routing_decision` (`assure` vs `fast_exit`), not tier.
 
 ## Routing heuristics
 

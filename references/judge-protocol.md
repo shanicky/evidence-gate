@@ -314,6 +314,29 @@ Apply stricter sufficiency as stakes rise.
 
 ## Verdict interpretation
 
+### Verdict decision tree
+
+Follow this sequence. Stop at the first matching condition.
+
+1. **Fast-exit path**: If the router returned `fast_exit`, return `PASS`.
+2. **ESCALATE check**: Does the claim require specialist authority or domain
+   certification that no amount of additional generic evidence can provide?
+   Use the specialist-authority checklist below. If yes, return `ESCALATE`.
+3. **CONFLICT check**: Do evidence items actively contradict each other on the
+   central question? Not absence: active contradiction. If yes, return
+   `CONFLICT`.
+4. **PASS check**: Are all mandatory requirements `satisfied` with no
+   unresolved central conflict? If yes, return `PASS`. Do not downgrade
+   because the tier feels high, because optional gaps exist, or because you
+   invented additional requirements beyond the tier's typical count.
+5. **SOFT_PASS check**: Is at least one mandatory requirement `satisfied`, and
+   can the caller still safely produce a weaker or advisory output? If yes,
+   return `SOFT_PASS`.
+6. **Otherwise**: return `BLOCK`.
+
+Do not skip steps.
+Do not re-evaluate a higher step after reaching a lower one.
+
 Use exactly these verdicts:
 
 - `PASS`: Evidence is sufficient for the requested strength at this tier.
@@ -339,6 +362,11 @@ Use exactly these verdicts:
     approval are all satisfied
   - a CRITICAL production key rotation where the core risks are covered by the
     provided evidence set and no central contradiction remains
+  - when four explicit evidence items already cover compromise confirmation,
+    recovery plan, dependency check, and accountable approval, that is `PASS`
+    at `CRITICAL`; do not invent extra requirements such as a post-incident
+    review timeline or secondary approval and then downgrade because they are
+    missing
 - `SOFT_PASS`: Evidence supports a weaker statement, advisory output, or
   reversible continuation.
 - Use `SOFT_PASS` when at least one mandatory requirement is `satisfied` and

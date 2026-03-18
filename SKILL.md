@@ -56,7 +56,8 @@ These are mandatory:
   - fast exit also means `judgment.residual_risk.severity = none`
 - **Deterministic governance**
   - do not improvise a new action map at runtime
-  - use `references/action-map.md`
+  - use `scripts/map_action.py` as the runtime authority
+  - treat `references/action-map.md` as the human-readable mirror
 
 ## Scope
 
@@ -186,29 +187,20 @@ The router decides:
 
 - classify stakes based on consequence if wrong, not based on how confident the
   caller sounds
-- consider blast radius, reversibility, execution mode, and sensitive domains
-- tier is classified by `impact_profile` dimensions alone; see the tier
-  classification algorithm in `references/stakes-router.md`
-- if a tier ceiling rule applies in `references/stakes-router.md`, it is
-  mandatory and replaces any higher tentative tier
-- do not raise tier based on domain keywords, evidence quality, or
-  `execution_mode`
-- accept normalized `impact_profile` values:
+- the router classifies tier using the algorithm in
+  `references/stakes-router.md`
+- treat `scripts/classify_tier.py` as the runtime authority when local script
+  execution is available
+- the tier algorithm uses only `impact_profile` dimensions; do not adjust tier
+  based on domain keywords, execution mode, or evidence quality
+- do not raise tier based on evidence quality or `execution_mode`
+- use normalized `impact_profile` values:
   `scope`, `reversibility`, `blast_radius`, `time_sensitivity`,
   `affected_assets`
-- if `stakes_override` is present, treat it as a same-or-higher tier floor
+- a root-of-trust asset inside `affected_assets` may raise a shared
+  production/external case to `CRITICAL`; see `scripts/classify_tier.py`
 - bias upward when policy overrides exist
 - do not inspect hidden reasoning
-
-Tier ceiling rules:
-
-- if `blast_radius` is `isolated` and `scope` is `team` or `service`, tier
-  ceiling is `MEDIUM`
-- if that same case also has `reversibility` equal to `easy` or `moderate`,
-  tier ceiling is `LOW`
-- if `blast_radius` is `single_service` and the scope is not `external`, tier
-  ceiling is `HIGH`
-- once a ceiling applies, replace any higher tentative tier with the ceiling
 
 #### Fast-exit conditions
 
@@ -389,60 +381,70 @@ The governor converts the verdict into an execution policy.
 
 #### Governed actions
 
-- `allow`
-- `allow_advisory`
-- `require_human`
-- `block`
-- `escalate`
+Use exactly: `allow`, `allow_advisory`, `require_human`, `block`, `escalate`.
 
 #### Mapping rules
 
-Apply the fixed mapping from `references/action-map.md`.
+Apply the fixed mapping from `scripts/map_action.py`.
+Use `references/action-map.md` only as a human-readable mirror of the same
+table.
 
 If the structured input includes `action_policy_override`, apply the base map
 first and then keep the stricter resulting action.
 Never use the override to loosen the base map.
 
-Important defaults:
-
-- `PASS` always maps to `allow`
-- `BLOCK` always maps to `block`
-- `ESCALATE` always maps to `escalate`
-- `SOFT_PASS` and `CONFLICT` map to `allow_advisory` for `LOW` and `MEDIUM`
-- `SOFT_PASS` and `CONFLICT` map to `require_human` for `HIGH` and `CRITICAL`
+Important defaults: `PASS -> allow`, `BLOCK -> block`, `ESCALATE -> escalate`,
+and both `SOFT_PASS` and `CONFLICT` map to `allow_advisory` at `LOW` or
+`MEDIUM`, then to `require_human` at `HIGH` or `CRITICAL`.
 
 The action map is a lookup table. The governor must output exactly the cell
-value from the map. It must not adjust the result based on its own judgment.
-`PASS` at any tier, including `CRITICAL`, maps to `allow`.
-
-<!-- This table is duplicated in references/action-map.md. Keep both in sync. -->
-
-Inline action map:
-
-| verdict | LOW | MEDIUM | HIGH | CRITICAL |
-| --- | --- | --- | --- | --- |
-| `PASS` | `allow` | `allow` | `allow` | `allow` |
-| `SOFT_PASS` | `allow_advisory` | `allow_advisory` | `require_human` | `require_human` |
-| `BLOCK` | `block` | `block` | `block` | `block` |
-| `CONFLICT` | `allow_advisory` | `allow_advisory` | `require_human` | `require_human` |
-| `ESCALATE` | `escalate` | `escalate` | `escalate` | `escalate` |
-
-Read the verdict row and the tier column. The cell is the governed action.
+value from `references/action-map.md`. It must not adjust the result based on
+its own judgment. `PASS` at any tier, including `CRITICAL`, maps to `allow`.
 
 #### Audit record
 
-Every governed action must include:
+Every governed action must nest an `audit_record` object inside the `action`.
+Do not flatten these fields to the action top level.
 
-- the rule identifier
-- the policy source
-- the verdict
-- the stakes tier
-- the mapping rationale
-- explicit follow-ups
+The `audit_record` object must contain:
+
+- `rule_id`: exactly `VERDICT:TIER` (for example `PASS:CRITICAL` or
+  `BLOCK:HIGH`)
+- `policy_source`: always `"references/action-map.md"`
+- `verdict`: the judge verdict copied from `judgment.verdict`
+- `stakes_tier`: the router tier copied from `stakes.stakes_tier`
+- `decision_basis`: one-sentence mapping rationale
+- `required_followups`: array of explicit follow-ups
+
+The action top level has exactly three keys:
+
+- `governed_action`
+- `audit_record`
+- `caller_instructions`
+
+Do not add top-level `rule_id`, `verdict`, `stakes_tier`, `verdict_input`, or
+`stakes_tier_input` fields to `action`.
 
 ## Recommended workflow
 
 Use this exact control shape unless a stricter outer policy exists.
+
+When local script execution is available, the pipeline must use scripts for
+deterministic steps:
+
+1. Run `scripts/classify_tier.py` for tier classification. Do not re-classify
+   in prose.
+2. Use the script-computed tier as input to the judge.
+3. When the runtime invokes the model in judge-only mode, send
+   `references/judge-protocol.md` and
+   `references/judge-output-template.md` as the system prompt and return only
+   the `judgment` JSON object.
+4. After the judge returns a verdict, run `scripts/map_action.py` for action
+   mapping. Do not re-map in prose.
+
+When scripts are not available, follow the pseudocode in
+`references/stakes-router.md` and the lookup table in
+`references/action-map.md` as closely as possible.
 
 1. Normalize the candidate claim or action.
 2. Route stakes before judging evidence.
@@ -452,8 +454,13 @@ Use this exact control shape unless a stricter outer policy exists.
 5. Generate only the minimum operational evidence obligations.
 6. Evaluate only evidence explicitly available in the current invocation.
 7. Produce one final verdict.
-8. Pass `(verdict, stakes_tier)` into the governor.
-9. Return the full envelope and stop.
+8. Pass `(verdict, stakes_tier)` into `scripts/map_action.py` when local script
+   execution is available; otherwise mirror the same lookup table exactly.
+9. Assemble the full envelope. In judge-only mode, the runtime owns this step.
+10. Run `scripts/validate.py` with the final JSON on stdin when local script
+    execution is available.
+11. If validation fails, fix each reported violation and re-emit.
+12. Do not return the output until validation passes.
 
 ## Allowed inferences
 
@@ -530,42 +537,5 @@ When changing this skill, keep these contract families aligned:
 
 ## Quick examples
 
-### Low-risk fast exit
-
-Input:
-
-- "Reformat this JSON file with 2-space indentation."
-
-Expected shape:
-
-- `stakes.routing_decision = fast_exit`
-- `judgment.gate_required = false`
-- `judgment.verdict = PASS`
-- `action.governed_action = allow`
-
-### High-stakes downgrade
-
-Input:
-
-- "Disable the worker queue in production."
-- one correlation chart
-- no rollback proof
-
-Expected shape:
-
-- `stakes.stakes_tier = HIGH`
-- `judgment.verdict = SOFT_PASS` or `BLOCK`
-- `action.governed_action = require_human` or `block`
-
-### Critical escalation
-
-Input:
-
-- "This medical release threshold is safe."
-- one opaque vendor model output
-
-Expected shape:
-
-- `stakes.stakes_tier = CRITICAL`
-- `judgment.verdict = ESCALATE`
-- `action.governed_action = escalate`
+Worked examples live in `references/quick-examples.md`.
+Use them as output-shape references, not as extra rules.

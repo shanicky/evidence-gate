@@ -10,6 +10,10 @@ be governed down to advisory, human review, block, or escalation.
 
 ```text
 SKILL.md                              # Entry point — full pipeline instructions
+scripts/
+  classify_tier.py                    # Deterministic tier classifier
+  map_action.py                       # Deterministic verdict/tier action mapper
+  validate.py                         # Runtime invariant validator
 references/
   stakes-router.md                    # Stakes routing protocol
   stakes-schema.json                  # Stakes output schema
@@ -21,6 +25,7 @@ references/
   action-map.md                       # Deterministic verdict/tier mapping
   action-output-template.md           # Governor output template
   action-schema.json                  # Governor output schema
+  quick-examples.md                   # Worked pipeline outcome examples
   pipeline-input-template.md          # Top-level pipeline input
   pipeline-output-template.md         # Top-level pipeline output
   pipeline-schema.json                # Top-level schema with fast-exit and mapping constraints
@@ -37,7 +42,7 @@ agents/
 eval/
   README.md                           # Current evaluation pack guide
   cases.jsonl                         # Decision Assurance cases
-  rubric.md                           # 7-dimension scoring rubric
+  rubric.md                           # 8-dimension scoring rubric
   score-template.csv                  # Evaluation worksheet
   run-eval.sh                         # Anthropic eval runner
   legacy/                             # Archived v1 Evidence Gate eval assets
@@ -83,5 +88,8 @@ After any edit, confirm:
 - [ ] `judge-verdict-schema.json` keeps the fast-exit and `ESCALATE` constraints
 - [ ] `pipeline-schema.json` keeps the fast-exit and action-mapping constraints
 - [ ] `action-map.md` still covers all verdict and tier combinations
+- [ ] `python3 scripts/classify_tier.py --test` passes
+- [ ] `python3 scripts/map_action.py --test` passes
+- [ ] `scripts/validate.py` accepts a valid pipeline sample
 - [ ] example policy pack YAML files parse successfully
 - [ ] `agents/openai.yaml` parses as valid YAML

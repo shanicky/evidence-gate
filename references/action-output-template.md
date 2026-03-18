@@ -25,5 +25,7 @@ Return a single JSON object with this exact top-level shape:
 - Use one of `allow`, `allow_advisory`, `require_human`, `block`, or
   `escalate` for `governed_action`.
 - Keep `audit_record.rule_id` aligned with `action-map.md`.
+- Use exact `VERDICT:TIER` format for `audit_record.rule_id`, such as
+  `SOFT_PASS:HIGH` or `PASS:CRITICAL`.
 - Keep `required_followups` explicit and bounded.
 - Keep `caller_instructions` directly reusable by the caller.

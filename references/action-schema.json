@@ -32,7 +32,8 @@
       ],
       "properties": {
         "rule_id": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^(PASS|SOFT_PASS|BLOCK|CONFLICT|ESCALATE):(LOW|MEDIUM|HIGH|CRITICAL)$"
         },
         "policy_source": {
           "type": "string"
