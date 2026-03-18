@@ -1,40 +1,87 @@
-# Evidence Gate
+# Decision Assurance
 
-Stateless, single-pass skill. Agents use it to verify whether a strong claim or high-impact action is sufficiently supported by explicit evidence before presenting or executing it.
+Stateless, single-pass skill. Agents use it to verify whether a consequential
+claim or action should fast-exit, proceed with evidence-backed confidence, or
+be governed down to advisory, human review, block, or escalation.
 
 `CLAUDE.md` is a symlink to this file.
 
 ## Project structure
 
-```
-SKILL.md                           # Entry point — frontmatter + runtime instructions
+```text
+SKILL.md                              # Entry point — full pipeline instructions
 references/
-  protocol.md                      # Protocol semantics, schemas, evidence evaluation pitfalls
-  input-template.md                # Canonical explicit input shape (claim is the only required field)
-  output-template.md               # Canonical output shape (gate_required + verdict + requirements)
-  verdict-schema.json              # Machine-checkable JSON schema with fast-exit constraint
+  stakes-router.md                    # Stakes routing protocol
+  stakes-schema.json                  # Stakes output schema
+  judge-protocol.md                   # Calibrated Judge protocol
+  judge-input-template.md             # Judge input template
+  judge-output-template.md            # Judge output template
+  judge-verdict-schema.json           # Judge output schema
+  action-governor.md                  # Action Governor protocol
+  action-map.md                       # Deterministic verdict/tier mapping
+  action-output-template.md           # Governor output template
+  action-schema.json                  # Governor output schema
+  pipeline-input-template.md          # Top-level pipeline input
+  pipeline-output-template.md         # Top-level pipeline output
+  pipeline-schema.json                # Top-level schema with fast-exit and mapping constraints
+  spec-compiler.md                    # Spec Compiler protocol
+  spec-compiler-schema.json           # Policy pack schema
+  verification-orchestrator.md        # Verification Orchestrator protocol
+  collector-interface.md              # Collector request/response contract
+  orchestrator-schema.json            # Orchestrator output schema
+  examples/
+    sre-production.yaml               # Example production SRE policy pack
+    research-claims.yaml              # Example research policy pack
 agents/
-  openai.yaml                      # OpenAI agent discoverability metadata
+  openai.yaml                         # OpenAI agent discoverability metadata
+eval/
+  README.md                           # Current evaluation pack guide
+  cases.jsonl                         # Decision Assurance cases
+  rubric.md                           # 7-dimension scoring rubric
+  score-template.csv                  # Evaluation worksheet
+  run-eval.sh                         # Anthropic eval runner
+  legacy/                             # Archived v1 Evidence Gate eval assets
 ```
-
-Evaluation assets live in `eval/` — keep them separate from the skill package.
 
 ## Invariants
 
-1. **Single-pass.** No second gate round, no retry loop, no stateful collection cycle.
-2. **Stateless.** No persistent files, no hidden memory, no cross-call state. Multi-step orchestration belongs outside this base skill.
-3. **Contracts aligned.** When changing any field shape, update all five together: `SKILL.md`, `protocol.md`, `input-template.md`, `output-template.md`, `verdict-schema.json`.
-4. **Fast-exit preserved.** `gate_required = false` → `verdict = PASS` + empty requirements/missing/conflicting. This is enforced in `verdict-schema.json`.
-5. **Structured outputs.** Every output keeps the full top-level shape from `output-template.md`. Never silently drop fields.
-6. **Evidence evaluation pitfalls enforced.** `protocol.md` contains pitfall rules (temporal correlation ≠ causation, single-source, scope mismatch, absence ≠ evidence). When a pitfall applies, mark the requirement `missing` or `conflicting`, not `satisfied`.
+1. **Single-pass.** No second assurance round, no retry loop, no stateful
+   collection cycle.
+2. **Stateless.** No persistent files, hidden memory, or cross-call state.
+   Multi-step orchestration belongs outside this base skill.
+3. **Router contract aligned.** When changing stakes fields, update
+   `SKILL.md`, `stakes-router.md`, and `stakes-schema.json` together.
+4. **Judge contract aligned.** When changing judgment fields, update
+   `SKILL.md`, `judge-protocol.md`, `judge-input-template.md`,
+   `judge-output-template.md`, and `judge-verdict-schema.json` together.
+5. **Governor contract aligned.** When changing governance fields, update
+   `SKILL.md`, `action-governor.md`, `action-map.md`,
+   `action-output-template.md`, and `action-schema.json` together.
+6. **Pipeline contract aligned.** When changing top-level fields, update
+   `SKILL.md`, `pipeline-input-template.md`, `pipeline-output-template.md`, and
+   `pipeline-schema.json` together.
+7. **Fast-exit preserved.** `routing_decision = fast_exit` must imply
+   `judgment.gate_required = false`, `judgment.verdict = PASS`, and
+   `action.governed_action = allow`.
+8. **ESCALATE preserved.** `judgment.verdict = ESCALATE` must imply
+   `judgment.gate_required = true` and `action.governed_action = escalate`.
+9. **Structured outputs.** Every output keeps the full top-level shape from
+   `pipeline-output-template.md`.
+10. **Deterministic mapping.** `action-map.md` must cover every
+    `verdict × stakes_tier` combination exactly once.
 
 ## Validation checklist
 
 After any edit, confirm:
 
 - [ ] `SKILL.md` frontmatter has only `name` and `description`
-- [ ] `SKILL.md` body still reflects the single-pass stateless model
-- [ ] All five contract files are aligned on field shapes
-- [ ] `verdict-schema.json` parses as valid JSON
-- [ ] `verdict-schema.json` fast-exit constraint (`gate_required=false` → `PASS` + empty arrays) is present
+- [ ] `SKILL.md` still reflects the single-pass stateless model
+- [ ] `judge-verdict-schema.json` parses as valid JSON
+- [ ] `pipeline-schema.json` parses as valid JSON
+- [ ] `spec-compiler-schema.json` parses as valid JSON
+- [ ] `orchestrator-schema.json` parses as valid JSON
+- [ ] `judge-verdict-schema.json` keeps the fast-exit and `ESCALATE` constraints
+- [ ] `pipeline-schema.json` keeps the fast-exit and action-mapping constraints
+- [ ] `action-map.md` still covers all verdict and tier combinations
+- [ ] example policy pack YAML files parse successfully
 - [ ] `agents/openai.yaml` parses as valid YAML

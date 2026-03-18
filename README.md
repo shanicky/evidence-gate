@@ -1,53 +1,52 @@
-# Evidence Gate
+# Decision Assurance
 
-Evidence Gate is a stateless, single-pass skill for checking whether a strong claim or high-impact action is sufficiently supported by explicit evidence.
+Decision Assurance is a stateless, single-pass skill for routing a tentative
+claim or action through three modules:
+
+1. Stakes Router
+2. Calibrated Judge
+3. Action Governor
+
+It evolves `evidence-gate` from a single evidence check into a full assurance
+pipeline that classifies stakes, judges evidence sufficiency, and maps the
+result to a governed action.
 
 ## Purpose
 
 Use this skill when an agent is about to:
 
-- present a root-cause diagnosis as settled
+- present a strong diagnosis as settled
 - make a safety assertion
 - recommend or execute a high-impact action
-- state a strong conclusion based on limited signals
+- approve or deny a consequential request
 
-The skill does not replace domain logic. It inserts one bounded checkpoint and returns:
+The pipeline returns:
 
-- whether a gate is required
-- what evidence obligations apply
-- whether current evidence is sufficient
-- how to downgrade safely if it is not
+- `stakes`: tier and routing decision
+- `judgment`: structured evidence assessment
+- `action`: deterministic governance outcome
 
 ## Key invariants
 
 - The base skill is **single-pass**.
 - The base skill is **stateless**.
-- `gate_required = false` is a valid fast exit.
-- The canonical input and output templates must stay aligned with the protocol and schema.
-
-If you want multi-step orchestration, build it outside this base skill.
+- Fast exit is preserved through the full pipeline envelope.
+- The action map is deterministic.
+- Module contracts must stay aligned with their templates and schemas.
 
 ## Package layout
 
 - `SKILL.md`: runtime instructions and trigger surface
-- `references/protocol.md`: protocol semantics and operating model
-- `references/input-template.md`: canonical explicit input shape
-- `references/output-template.md`: canonical output shape
-- `references/verdict-schema.json`: machine-checkable output schema
-- `agents/openai.yaml`: discoverability metadata
-
-## Validation
-
-After editing this skill, validate these things together:
-
-1. `SKILL.md` still reflects the single-pass stateless model.
-2. `protocol.md`, `input-template.md`, `output-template.md`, and `verdict-schema.json` stay aligned.
-3. `agents/openai.yaml` still references `$evidence-gate`.
+- `references/stakes-router.md`: router protocol
+- `references/stakes-schema.json`: router schema
+- `references/judge-*`: evolved evidence gate contract set
+- `references/action-*`: governance mapping contract set
+- `references/pipeline-*`: top-level input, output, and schema
+- `references/spec-compiler.md`: Phase 2 placeholder
+- `references/verification-orchestrator.md`: Phase 2 placeholder
+- `agents/openai.yaml`: OpenAI discoverability metadata
 
 ## Evaluation
 
-`eval/` contains a 12-case A/B test pack:
-
-- `cases.jsonl`: test cases covering fast-exit, PASS, SOFT_PASS, BLOCK, CONFLICT
-- `rubric.md`: 5-dimension scoring rubric
-- `score-template.csv`: results template (includes a completed baseline vs gated run)
+`eval/` contains the current Decision Assurance evaluation pack.
+The original Evidence Gate pack is archived under `eval/legacy/`.

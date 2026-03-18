@@ -1,13 +1,14 @@
-# Evidence Gate Input Template
+# Decision Assurance Judge Input Template
 
-When a caller wants explicit control instead of relying on inference, use this JSON shape:
+When a caller wants deterministic control over the Calibrated Judge, use this
+JSON shape:
 
 ```json
 {
   "claim": "The root cause is a nil dereference in request parsing.",
   "claim_type": "diagnosis",
   "domain": "coding",
-  "risk_level": "medium",
+  "stakes_tier": "MEDIUM",
   "execution_mode": "advisory",
   "target_strength": "definitive",
   "known_evidence": [
@@ -18,6 +19,10 @@ When a caller wants explicit control instead of relying on inference, use this J
       "source": "local test suite",
       "artifact_ref": "tests/auth_test.rb:42",
       "reliability": "high",
+      "timestamp": "2026-03-18T09:15:00Z",
+      "environment": "local",
+      "freshness": "current",
+      "independence_group": "local-test-suite",
       "supports": ["req-repro"],
       "contradicts": []
     }
@@ -33,7 +38,12 @@ When a caller wants explicit control instead of relying on inference, use this J
 ## Rules
 
 - `claim` is the only required field for a minimal invocation.
-- Use the full template when a caller wants deterministic control over classification and risk.
-- Keep `known_evidence` explicit; do not rely on hidden reasoning as evidence.
+- Provide `stakes_tier` explicitly when the judge is called inside the full
+  pipeline.
+- Keep `known_evidence` explicit and artifact-linked.
+- Provenance fields such as `timestamp`, `environment`, `freshness`, and
+  `independence_group` are optional, but strongly preferred for consequential
+  cases.
 - Keep `alternatives_checked` concise and concrete.
-- Use coarse-grained `domain` values; keep domain details in evidence items and requirements.
+- Use `policy_overrides` only for stricter local policy, not for hidden
+  reasoning.

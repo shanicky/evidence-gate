@@ -1,0 +1,801 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DecisionAssurancePipeline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stakes", "judgment", "action"],
+  "properties": {
+    "stakes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stakes_tier",
+        "routing_decision",
+        "tier_rationale",
+        "routing_signals"
+      ],
+      "properties": {
+        "stakes_tier": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+        },
+        "routing_decision": {
+          "type": "string",
+          "enum": ["fast_exit", "assure"]
+        },
+        "tier_rationale": {
+          "type": "string"
+        },
+        "routing_signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gate_required",
+        "gate_reason",
+        "candidate_summary",
+        "stakes_tier",
+        "requirements",
+        "missing_evidence",
+        "conflicting_evidence",
+        "sufficiency_rule",
+        "source_independence",
+        "confidence_calibration",
+        "residual_risk",
+        "verdict",
+        "allowed_next_actions",
+        "blocked_next_actions",
+        "fallback_behavior",
+        "suggested_wording",
+        "next_evidence_actions"
+      ],
+      "properties": {
+        "gate_required": {
+          "type": "boolean"
+        },
+        "gate_reason": {
+          "type": "string"
+        },
+        "candidate_summary": {
+          "type": "string"
+        },
+        "stakes_tier": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "description",
+              "mandatory",
+              "acceptable_kinds",
+              "status",
+              "evidence_refs",
+              "notes"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "mandatory": {
+                "type": "boolean"
+              },
+              "acceptable_kinds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "satisfied",
+                  "missing",
+                  "conflicting",
+                  "not_applicable"
+                ]
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "missing_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicting_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sufficiency_rule": {
+          "type": "string"
+        },
+        "source_independence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rating", "rationale"],
+          "properties": {
+            "rating": {
+              "type": "string",
+              "enum": ["high", "medium", "low", "not_applicable"]
+            },
+            "rationale": {
+              "type": "string"
+            }
+          }
+        },
+        "confidence_calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "rationale"],
+          "properties": {
+            "level": {
+              "type": "string",
+              "enum": ["high", "medium", "low", "not_applicable"]
+            },
+            "rationale": {
+              "type": "string"
+            }
+          }
+        },
+        "residual_risk": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "severity", "mitigations"],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["none", "low", "medium", "high"]
+            },
+            "mitigations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "SOFT_PASS", "BLOCK", "CONFLICT", "ESCALATE"]
+        },
+        "allowed_next_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked_next_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fallback_behavior": {
+          "type": "string"
+        },
+        "suggested_wording": {
+          "type": "string"
+        },
+        "next_evidence_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "governed_action",
+        "audit_record",
+        "caller_instructions"
+      ],
+      "properties": {
+        "governed_action": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "allow_advisory",
+            "require_human",
+            "block",
+            "escalate"
+          ]
+        },
+        "audit_record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rule_id",
+            "policy_source",
+            "decision_basis",
+            "verdict",
+            "stakes_tier",
+            "required_followups"
+          ],
+          "properties": {
+            "rule_id": {
+              "type": "string"
+            },
+            "policy_source": {
+              "type": "string"
+            },
+            "decision_basis": {
+              "type": "string"
+            },
+            "verdict": {
+              "type": "string",
+              "enum": ["PASS", "SOFT_PASS", "BLOCK", "CONFLICT", "ESCALATE"]
+            },
+            "stakes_tier": {
+              "type": "string",
+              "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+            },
+            "required_followups": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "caller_instructions": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "stakes": {
+            "properties": {
+              "routing_decision": {
+                "const": "fast_exit"
+              }
+            },
+            "required": ["routing_decision"]
+          }
+        },
+        "required": ["stakes"]
+      },
+      "then": {
+        "properties": {
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "const": "LOW"
+              }
+            }
+          },
+          "judgment": {
+            "properties": {
+              "gate_required": {
+                "const": false
+              },
+              "source_independence": {
+                "properties": {
+                  "rating": {
+                    "const": "not_applicable"
+                  }
+                }
+              },
+              "confidence_calibration": {
+                "properties": {
+                  "level": {
+                    "const": "not_applicable"
+                  }
+                }
+              },
+              "residual_risk": {
+                "properties": {
+                  "severity": {
+                    "const": "none"
+                  },
+                  "mitigations": {
+                    "maxItems": 0
+                  }
+                }
+              },
+              "verdict": {
+                "const": "PASS"
+              },
+              "requirements": {
+                "maxItems": 0
+              },
+              "missing_evidence": {
+                "maxItems": 0
+              },
+              "conflicting_evidence": {
+                "maxItems": 0
+              }
+            }
+          },
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "allow"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "enum": ["SOFT_PASS", "BLOCK", "CONFLICT", "ESCALATE"]
+              }
+            },
+            "required": ["verdict"]
+          }
+        },
+        "required": ["judgment"]
+      },
+      "then": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "gate_required": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "const": "LOW"
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["stakes"]
+      },
+      "then": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "stakes_tier": {
+                "const": "LOW"
+              }
+            }
+          },
+          "action": {
+            "properties": {
+              "audit_record": {
+                "properties": {
+                  "stakes_tier": {
+                    "const": "LOW"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "const": "MEDIUM"
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["stakes"]
+      },
+      "then": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "stakes_tier": {
+                "const": "MEDIUM"
+              }
+            }
+          },
+          "action": {
+            "properties": {
+              "audit_record": {
+                "properties": {
+                  "stakes_tier": {
+                    "const": "MEDIUM"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "const": "HIGH"
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["stakes"]
+      },
+      "then": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "stakes_tier": {
+                "const": "HIGH"
+              }
+            }
+          },
+          "action": {
+            "properties": {
+              "audit_record": {
+                "properties": {
+                  "stakes_tier": {
+                    "const": "HIGH"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "const": "CRITICAL"
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["stakes"]
+      },
+      "then": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "stakes_tier": {
+                "const": "CRITICAL"
+              }
+            }
+          },
+          "action": {
+            "properties": {
+              "audit_record": {
+                "properties": {
+                  "stakes_tier": {
+                    "const": "CRITICAL"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "PASS"
+              }
+            },
+            "required": ["verdict"]
+          }
+        },
+        "required": ["judgment"]
+      },
+      "then": {
+        "properties": {
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "allow"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "PASS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "BLOCK"
+              }
+            },
+            "required": ["verdict"]
+          }
+        },
+        "required": ["judgment"]
+      },
+      "then": {
+        "properties": {
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "block"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "BLOCK"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "ESCALATE"
+              }
+            },
+            "required": ["verdict"]
+          }
+        },
+        "required": ["judgment"]
+      },
+      "then": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "gate_required": {
+                "const": true
+              }
+            }
+          },
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "escalate"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "ESCALATE"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "SOFT_PASS"
+              }
+            },
+            "required": ["verdict"]
+          },
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "enum": ["LOW", "MEDIUM"]
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["judgment", "stakes"]
+      },
+      "then": {
+        "properties": {
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "allow_advisory"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "SOFT_PASS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "SOFT_PASS"
+              }
+            },
+            "required": ["verdict"]
+          },
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "enum": ["HIGH", "CRITICAL"]
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["judgment", "stakes"]
+      },
+      "then": {
+        "properties": {
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "require_human"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "SOFT_PASS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "CONFLICT"
+              }
+            },
+            "required": ["verdict"]
+          },
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "enum": ["LOW", "MEDIUM"]
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["judgment", "stakes"]
+      },
+      "then": {
+        "properties": {
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "allow_advisory"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "CONFLICT"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "judgment": {
+            "properties": {
+              "verdict": {
+                "const": "CONFLICT"
+              }
+            },
+            "required": ["verdict"]
+          },
+          "stakes": {
+            "properties": {
+              "stakes_tier": {
+                "enum": ["HIGH", "CRITICAL"]
+              }
+            },
+            "required": ["stakes_tier"]
+          }
+        },
+        "required": ["judgment", "stakes"]
+      },
+      "then": {
+        "properties": {
+          "action": {
+            "properties": {
+              "governed_action": {
+                "const": "require_human"
+              },
+              "audit_record": {
+                "properties": {
+                  "verdict": {
+                    "const": "CONFLICT"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

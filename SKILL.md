@@ -1,296 +1,574 @@
 ---
-name: "evidence-gate"
-description: "Generates evidence obligations for a claim or action, evaluates existing evidence against them, and returns a structured verdict (PASS / SOFT_PASS / BLOCK / CONFLICT) with safe downgrade guidance. TRIGGER when the agent is about to present a root-cause diagnosis, claim 'the cause is X', say 'this is safe', recommend a destructive or irreversible action, recommend a rollback, make a safety assertion, or state a strong conclusion based on limited evidence. DO NOT TRIGGER when summarizing, formatting, brainstorming possibilities, performing low-risk reversible operations, or when the caller already has its own evidence-validation step."
+name: "decision-assurance"
+description: "Routes a tentative claim or action through stakes classification, calibrated evidence judgment, and action governance. TRIGGER when the agent is about to present a root-cause diagnosis as settled, make a safety assertion, recommend or execute a high-impact action, approve or deny a consequential request, or state a strong conclusion from thin evidence. DO NOT TRIGGER for pure formatting, summarization, brainstorming, or clearly low-risk reversible work unless local policy requires assurance."
 ---
 
-# Evidence Gate
+# Decision Assurance
 
-Use this skill to insert a lightweight evidence gate into an existing workflow without replacing the workflow.
+Use this skill to add one bounded governance pass to an existing workflow.
 
-Its purpose is not to make the caller more cautious — capable agents are already cautious.
-Its purpose is to make that caution **structured, auditable, and actionable** by answering a narrower question:
+The skill answers a narrow question:
 
-**What evidence must exist before this conclusion or action is responsible enough to present, recommend, or execute?**
+**What is the strongest responsible thing the caller may say or do, given the
+explicit evidence currently available?**
 
-Treat the caller's conclusion or action as tentative until the gate returns a verdict.
+It does not replace domain reasoning.
+It does not take over orchestration.
+It does not run a retry loop.
 
-Keep the skill lightweight, selective, and non-blocking by default.
+## Core model
+
+Run a single stateless pipeline:
+
+1. **Stakes Router**
+   - classify operational stakes as `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`
+   - choose `fast_exit` or `assure`
+2. **Calibrated Judge**
+   - define the minimum evidence obligations
+   - evaluate only explicit evidence in scope
+   - return `PASS`, `SOFT_PASS`, `BLOCK`, `CONFLICT`, or `ESCALATE`
+3. **Action Governor**
+   - deterministically map `(verdict, stakes_tier)` to
+     `allow`, `allow_advisory`, `require_human`, `block`, or `escalate`
+
+Return one final structured output and exit.
+
+## Invariants
+
+These are mandatory:
+
+- **Single-pass**
+  - no second gate round
+  - no retry loop
+  - no hidden collection cycle
+- **Stateless**
+  - no persistent files
+  - no cross-call memory
+  - no implicit carry-over from prior invocations
+- **Structured**
+  - always return the full top-level pipeline shape
+  - do not silently drop fields
+- **Fast-exit preserved**
+  - `routing_decision = fast_exit` must still return the full envelope
+  - `judgment.gate_required = false` implies `judgment.verdict = PASS`
+  - fast exit means empty requirements, missing evidence, and conflicting
+    evidence
+  - fast exit also means `judgment.residual_risk.severity = none`
+- **Deterministic governance**
+  - do not improvise a new action map at runtime
+  - use `references/action-map.md`
 
 ## Scope
 
-This skill gates the agent's own reasoning quality — not the user's intent.
+This skill governs the agent's own claim strength and action strength.
 
 It is not:
-- content moderation or policy enforcement
-- user intent classification (allow / refuse / clarify)
-- a legal, compliance, or safety advisory tool
+
+- content moderation
+- user intent classification
+- a legal or compliance decision engine
 - a replacement for domain expertise
-
-## Core idea
-
-Given a tentative claim or action, do three things:
-
-1. Define the minimum evidence obligations for that claim/action.
-2. Check what evidence already exists and what is still missing or conflicting.
-3. Return a verdict and a safe next-step policy.
-
-Do not fully own evidence collection.
-Recommend missing evidence for the caller to gather using its existing tools.
-
-## Operating model
-
-Use a single-pass gate instead of taking over the full workflow:
-
-1. The caller reaches a tentative claim, diagnosis, recommendation, or action.
-2. Generate the evidence obligations for that candidate.
-3. Evaluate only the evidence currently available in the invocation.
-4. Return a final verdict for this invocation:
-   - whether the current evidence is sufficient
-   - how the caller should downgrade if it is not
-   - which next evidence checks would be most valuable
-5. Exit.
-
-Assume no durable skill state across calls.
-Do not require a second gate pass unless the caller explicitly chooses to orchestrate one outside this skill.
+- a multi-step verifier
 
 ## When to use
 
-Use this skill when one or more of the following are true:
+Use this skill when one or more of these are true:
 
-- The caller is about to make a strong claim such as:
-  - "the root cause is X"
-  - "this is safe"
-  - "this configuration should be changed"
-  - "the correct action is Y"
-- The caller is about to recommend or execute a high-impact step such as:
-  - rollback
-  - scale up/down
-  - delete/disable/quarantine
-  - approve/reject
-  - change production configuration
-- The current conclusion appears to rely on only one signal, one log line, one chart, or one tool result.
-- Competing explanations have not been checked.
-- The user explicitly asks for an evidence-backed answer.
-- The environment or workflow has a policy requiring stronger justification before action.
+- the caller is about to present a root-cause diagnosis as settled
+- the caller is about to make a safety assertion
+- the caller is about to recommend or execute a destructive or high-impact step
+- the caller is about to approve or deny access, rollout, rollback, deletion,
+  or production change
+- the current position depends on one signal, one tool output, or one source
+- competing explanations have not been checked
+- the user explicitly asks for an evidence-backed answer
+- local policy requires auditable justification
 
-## When NOT to use
+## When not to use
 
 Do not use this skill when:
 
-- The output is low-risk and easily reversible.
-- The task is simple summarization or formatting.
-- The caller is brainstorming possibilities and is not presenting a conclusion as established.
-- The additional delay or cost of gating would outweigh the value.
-- The caller already has an explicit evidence-validation layer for this exact step.
+- the task is purely formatting
+- the task is straightforward summarization
+- the caller is brainstorming possibilities and not presenting them as settled
+- the work is trivially reversible and low impact
+- the caller already has a stronger assurance layer for the same step
 
-## Design constraints
+## Operating posture
 
-This skill must preserve the caller's original capability as much as possible.
+Treat every claim or action as tentative until the pipeline finishes.
 
-It should:
-- be selective rather than always-on
-- avoid taking over the entire workflow
-- avoid forcing chain-of-thought disclosure
-- avoid blocking work unless a real risk threshold is crossed
-- prefer downgrade/fallback over hard failure
-- assume each invocation is stateless
+Prefer:
 
-## Integration policy
+- bounded evidence obligations
+- direct evaluation of explicit artifacts
+- downgrade over overclaiming
+- human review over fabricated certainty
 
-Apply these defaults unless the caller provides stricter policy:
+Do not:
 
-1. Run the gate only at conclusion points or before high-impact actions.
-2. Generate only `2-5` concrete evidence obligations.
-3. Evaluate only the evidence explicitly present in the current invocation.
-4. Return one final verdict for the current invocation.
-5. If evidence is insufficient, downgrade or defer instead of spinning.
-6. Keep domain ownership with the caller.
-7. Judge only explicit artifacts, not hidden reasoning.
+- claim hidden reasoning as evidence
+- collect evidence inside a loop
+- treat policy silence as approval
+- turn generic uncertainty into `ESCALATE`
 
-## Input contract
+## Inputs
 
-The only required input is the **claim** — the conclusion, diagnosis, recommendation, or action under consideration.
+The only required input is the claim or action under consideration.
 
-Invocation examples:
+The slash-prefixed examples below illustrate skill-style invocation syntax.
+Non-skill consumers may pass the same fields directly as structured input.
 
-- `/evidence-gate "The root cause is a nil dereference in request parsing"`
-- `/evidence-gate "Safe to delete the staging database"`
-- Agent self-trigger: the agent recognizes a gate-worthy moment and invokes the skill with the current claim from context.
+Examples:
 
-When invoked with just a claim, the skill infers the remaining context:
+- `/decision-assurance "The root cause is a nil dereference in request parsing."`
+- `/decision-assurance "Disable the worker queue in production."`
+- `/decision-assurance "This access change is safe under policy."`
 
-- `claim_type`: inferred from the claim language (e.g., "the cause is" → `diagnosis`, "safe to" → `safety`, "should delete" → `action`)
-- `domain`: inferred from the current working context
-- `risk_level`: inferred from the action's reversibility and blast radius
-- `execution_mode`: inferred from whether the caller is informing, recommending, or about to execute
-- `target_strength`: inferred from the claim's language strength
+When the caller provides only a claim, infer reasonable defaults from context.
 
-The caller may optionally provide any of these fields to override inference.
-Use `references/input-template.md` when a caller wants a canonical explicit input shape.
-See `references/protocol.md` for the full schema semantics.
+Typical inferred fields:
 
-## Output contract
+- `claim_type`
+- `domain`
+- `execution_mode`
+- `target_strength`
+- `impact_profile`
 
-The skill should return a structured gate result containing:
+For backward compatibility, callers may still send top-level `impact_scope` and
+`reversibility` aliases.
+When both alias fields and `impact_profile` are present, use `impact_profile`
+as the source of truth.
 
-- whether a gate is required
-- why the gate is required
-- evidence requirements
-- per-requirement status
-- missing evidence
-- conflicting evidence
-- sufficiency rule
-- verdict
-- allowed next actions
-- blocked next actions
-- fallback behavior
-- suggested caller wording when evidence is insufficient
-- next evidence actions
+Optional caller-controlled overrides for structured input:
 
-Return JSON matching `references/output-template.md`.
-Use `references/verdict-schema.json` as the machine-checkable schema.
-Keep `gate_required` even on explicit invocation.
-Use `gate_required = false` as a fast exit when the claim is already low-risk, exploratory, or sufficiently bounded.
+- `stakes_override`
+  - pin or raise the stakes tier when an outer workflow has already classified
+    the case
+- `action_policy_override`
+  - reserve a stricter final action such as `require_human`, `block`, or
+    `escalate`
 
-## Verdict states
+When the caller wants deterministic control, use:
 
-Use exactly these verdicts:
+- `references/pipeline-input-template.md`
+
+## Output
+
+Return JSON matching:
+
+- `references/pipeline-output-template.md`
+
+Validate against:
+
+- `references/pipeline-schema.json`
+
+Always keep these top-level objects present:
+
+- `stakes`
+- `judgment`
+- `action`
+
+## Pipeline contract
+
+### 1. Stakes Router
+
+Use `references/stakes-router.md` and `references/stakes-schema.json`.
+
+The router decides:
+
+- `stakes_tier`
+- `routing_decision`
+- `tier_rationale`
+- `routing_signals`
+
+#### Router guidance
+
+- classify stakes based on consequence if wrong, not based on how confident the
+  caller sounds
+- consider blast radius, reversibility, execution mode, and sensitive domains
+- tier is classified by `impact_profile` dimensions alone; see the tier
+  classification algorithm in `references/stakes-router.md`
+- if a tier ceiling rule applies in `references/stakes-router.md`, it is
+  mandatory and replaces any higher tentative tier
+- do not raise tier based on domain keywords, evidence quality, or
+  `execution_mode`
+- accept normalized `impact_profile` values:
+  `scope`, `reversibility`, `blast_radius`, `time_sensitivity`,
+  `affected_assets`
+- if `stakes_override` is present, treat it as a same-or-higher tier floor
+- bias upward when policy overrides exist
+- do not inspect hidden reasoning
+
+Tier ceiling rules:
+
+- if `blast_radius` is `isolated` and `scope` is `team` or `service`, tier
+  ceiling is `MEDIUM`
+- if that same case also has `reversibility` equal to `easy` or `moderate`,
+  tier ceiling is `LOW`
+- if `blast_radius` is `single_service` and the scope is not `external`, tier
+  ceiling is `HIGH`
+- once a ceiling applies, replace any higher tentative tier with the ceiling
+
+#### Fast-exit conditions
+
+Use `fast_exit` only when all of these are true:
+
+- the case is `LOW`
+- the work is reversible or tightly bounded
+- the caller is not presenting a factual conclusion, diagnosis, safety
+  assertion, or action recommendation as settled
+- no destructive, safety-critical, or external-impact action is being proposed
+- no policy override forces assurance
+
+When the router returns `fast_exit`, still return the full pipeline envelope.
+For fast exit, set:
+
+- `judgment.source_independence.rating = not_applicable`
+- `judgment.confidence_calibration.level = not_applicable`
+- `judgment.residual_risk.severity = none`
+
+### 2. Calibrated Judge
+
+Use:
+
+- `references/judge-protocol.md`
+- `references/judge-input-template.md`
+- `references/judge-output-template.md`
+- `references/judge-verdict-schema.json`
+
+The judge evolves the old evidence gate into a tier-aware evaluator.
+
+It must:
+
+- preserve the single-pass model
+- preserve the fast-exit contract
+- keep the full structured output shape
+- evaluate only explicit evidence in the current invocation
+- generate only `2-5` concrete requirements unless the case is unusually broad
+
+#### Judge outputs
+
+The judge always returns:
+
+- `gate_required`
+- `gate_reason`
+- `candidate_summary`
+- `stakes_tier`
+- `requirements`
+- `missing_evidence`
+- `conflicting_evidence`
+- `sufficiency_rule`
+- `source_independence`
+- `confidence_calibration`
+- `residual_risk`
+- `verdict`
+- `allowed_next_actions`
+- `blocked_next_actions`
+- `fallback_behavior`
+- `suggested_wording`
+- `next_evidence_actions`
+
+#### Verdict meanings
 
 - `PASS`
-  - Evidence is sufficient for the intended claim/action.
+  - the evidence supports the requested claim or action at this tier
 - `SOFT_PASS`
-  - Evidence is incomplete, but sufficient for a weaker claim, advisory output, or low-risk continuation.
+  - the evidence supports only weaker wording, advisory continuation, or
+    reversible next steps
 - `BLOCK`
-  - Evidence is insufficient for the intended strength or risk level. High-impact continuation should not proceed.
+  - the evidence does not justify the requested strength or action
 - `CONFLICT`
-  - Evidence materially disagrees or supports multiple competing interpretations. The caller should not present a strong conclusion as settled.
+  - central evidence points in materially different directions
+- `ESCALATE`
+  - the skill cannot responsibly resolve the remaining uncertainty and the case
+    must move to a human or specialist owner
 
-## Required behavior
+#### Tier-sensitive judging
 
-### 1. Normalize the candidate
-Reduce the caller's current position to a tentative, explicit candidate.
-If the caller already states the final conclusion as settled, rewrite it internally as tentative before gating it.
+As stakes rise, the judge should expect:
 
-### 2. Define evidence obligations
-Translate the candidate claim/action into a small set of concrete evidence requirements.
+- stronger corroboration
+- tighter scope matching
+- clearer rollback or approval evidence
+- less tolerance for unresolved contradiction
 
-Good evidence requirements are:
-- specific
-- externally checkable
-- operationally gatherable
-- tied to the claim, not generic boilerplate
+#### Source independence
 
-Bad evidence requirements are vague, such as:
-- "get more proof"
-- "verify better"
-- "be more certain"
+Always return `source_independence` as an object:
 
-### 3. Evaluate sufficiency
-Determine whether currently known evidence satisfies the requirements.
+- `rating`
+- `rationale`
 
-The skill should explicitly mark:
-- `satisfied`
-- `missing`
-- `conflicting`
+Evaluate whether the support is independent.
+
+Typical weak patterns:
+
+- all support comes from one dashboard pipeline
+- all support comes from one model or one opaque tool
+- all support comes from one person's statement
+
+If independence is weak, do not silently treat repeated signals as separate
+proof.
+
+#### Confidence calibration
+
+Always return `confidence_calibration` as an object:
+
+- `level`
+- `rationale`
+
+Use `level` values:
+
+- `high`
+  - clean evidence coverage for the requested strength
+- `medium`
+  - usable but requires caveats
+- `low`
+  - only downgrade, block, or escalation is justified
 - `not_applicable`
+  - fast exit, so no calibration pass was needed
 
-### 4. Produce a final verdict for the current invocation
-Return a verdict immediately after evaluating known evidence.
-If evidence is missing, identify only the smallest set of additional checks that would materially change the verdict.
+#### Residual risk
 
-### 5. Prefer downgrade over dead stop
-If evidence is insufficient, prefer one of:
-- provisional conclusion
-- candidate hypotheses
+Always return `residual_risk` as an object:
+
+- `description`
+- `severity`
+- `mitigations`
+
+Use residual risk to describe what can still go wrong even when the current
+verdict and governance action are acceptable.
+`PASS` does not imply zero residual risk.
+
+#### Required pitfalls
+
+Do not mark a requirement `satisfied` when any of these apply:
+
+- temporal correlation without causal isolation
+- single-source confirmation for a central claim
+- scope mismatch across environment, time window, or population
+- passive lack of complaints instead of active verification
+- tool output with unassessed reliability
+- high-skepticism tool outputs (`search_retrieval`, `model_inference`) treated
+  as if they were independent proof
+
+#### Downgrade policy
+
+If the evidence is insufficient, prefer one of:
+
+- weaker wording
 - advisory-only output
-- ask-for-human-review
-- request-more-evidence plan
+- request for bounded additional checks
+- human review
 
-Do not hard-block low-risk work unnecessarily.
+Do not let the caller present a settled diagnosis or execute a high-impact step
+when the evidence only supports a tentative statement.
 
-### 6. Assume stateless execution
-Assume every call is fresh.
-Do not depend on remembering prior requirements, prior verdicts, or prior collection attempts unless the caller explicitly embeds them in the current input.
+Verdict boundary rules:
 
-### 7. Avoid hidden-reasoning dependence
-Do not require access to hidden chain-of-thought.
-Judge only from explicit claim, explicit evidence, explicit policy, and explicit outputs.
+- if all mandatory requirements are satisfied and no central conflict remains,
+  return `PASS`
+- an unsatisfied optional requirement must not downgrade `PASS`
+- if at least one mandatory requirement is satisfied and advisory output is
+  still useful, prefer `SOFT_PASS` over `BLOCK`
+- if the missing piece is specialist or delegated approval authority, use
+  `ESCALATE`, not `BLOCK`
+- tax correctness, MIL-STD compliance, and production security-exception
+  approval are named specialist-authority cases
+- finance freeze actions with partial support and ordinary review gaps are
+  usually `SOFT_PASS`, not `ESCALATE`
+- shared-service staging changes with one legitimate support signal and
+  missing coordination are usually `SOFT_PASS`, not `BLOCK`
 
-## Suggested workflow
+### 3. Action Governor
 
-1. Receive normalized candidate claim/action.
-2. Decide whether gating is required.
-3. If no gate is required, return `PASS` with rationale.
-4. If a gate is required:
-   - generate evidence requirements
-   - evaluate known evidence
-   - identify gaps and conflicts
-   - apply a sufficiency rule
-   - produce a final verdict for this invocation
-   - produce fallback and next-step guidance
-5. Return a structured result without taking over execution.
+Use:
 
-## Default trigger heuristics
+- `references/action-governor.md`
+- `references/action-map.md`
+- `references/action-output-template.md`
+- `references/action-schema.json`
 
-Bias toward using this skill when any of the following are present:
+The governor converts the verdict into an execution policy.
 
-- `risk_level = high`
-- `execution_mode = auto`
-- claim language is strong or definitive
-- only one evidence source supports the claim
-- no competing hypothesis check exists
-- action is costly, irreversible, or externally visible
+#### Governed actions
 
-Bias away from using this skill when:
+- `allow`
+- `allow_advisory`
+- `require_human`
+- `block`
+- `escalate`
 
-- `risk_level = low`
-- the output is exploratory, not conclusive
-- the result is easy to reverse
-- the task is primarily formatting or summarization
+#### Mapping rules
 
-## Default fallback policy
+Apply the fixed mapping from `references/action-map.md`.
 
-When the gate does not fully pass, prefer these downgrades:
+If the structured input includes `action_policy_override`, apply the base map
+first and then keep the stricter resulting action.
+Never use the override to loosen the base map.
 
-- intended strong conclusion -> provisional conclusion
-- automatic action -> advisory recommendation
-- settled diagnosis -> candidate hypotheses
-- irreversible operation -> human approval required
-- insufficient current evidence -> stop and return a bounded next-evidence plan
+Important defaults:
 
-## Output style guidance
+- `PASS` always maps to `allow`
+- `BLOCK` always maps to `block`
+- `ESCALATE` always maps to `escalate`
+- `SOFT_PASS` and `CONFLICT` map to `allow_advisory` for `LOW` and `MEDIUM`
+- `SOFT_PASS` and `CONFLICT` map to `require_human` for `HIGH` and `CRITICAL`
 
-When the verdict is not `PASS`, the caller should avoid overstating certainty.
+The action map is a lookup table. The governor must output exactly the cell
+value from the map. It must not adjust the result based on its own judgment.
+`PASS` at any tier, including `CRITICAL`, maps to `allow`.
 
-Good examples:
-- "Current evidence suggests X, but this is not yet sufficiently established."
-- "This is a plausible diagnosis, not a confirmed root cause."
-- "Evidence is currently insufficient for automatic execution."
-- "Additional evidence is needed before recommending Y with confidence."
+Inline action map:
 
-Bad examples:
-- "This is definitely the cause" when key evidence is missing
-- "Safe to proceed" when competing evidence exists
+| verdict | LOW | MEDIUM | HIGH | CRITICAL |
+| --- | --- | --- | --- | --- |
+| `PASS` | `allow` | `allow` | `allow` | `allow` |
+| `SOFT_PASS` | `allow_advisory` | `allow_advisory` | `require_human` | `require_human` |
+| `BLOCK` | `block` | `block` | `block` | `block` |
+| `CONFLICT` | `allow_advisory` | `allow_advisory` | `require_human` | `require_human` |
+| `ESCALATE` | `escalate` | `escalate` | `escalate` | `escalate` |
 
-## Example use cases
+Read the verdict row and the tier column. The cell is the governed action.
 
-- SRE:
-  Before recommending scale-up, verify that bottleneck evidence is real and alternative explanations were checked.
-- Coding:
-  Before claiming a bug root cause, verify reproduction path, code-path match, and at least one falsified alternative.
-- Security:
-  Before declaring an action safe, require policy match, scope confirmation, and risk checks.
-- Research:
-  Before presenting a strong conclusion, require source support and contradiction checks.
+#### Audit record
 
-## Non-goals
+Every governed action must include:
 
-This skill is not:
-- a universal orchestrator
-- a replacement for domain expertise
-- a guarantee of correctness
-- a hidden chain-of-thought inspector
-- a mandatory wrapper around every agent step
+- the rule identifier
+- the policy source
+- the verdict
+- the stakes tier
+- the mapping rationale
+- explicit follow-ups
 
-Its job is narrower:
-**make evidence obligations explicit, assess whether they are met, and enforce safe downgrade behavior when they are not.**
+## Recommended workflow
+
+Use this exact control shape unless a stricter outer policy exists.
+
+1. Normalize the candidate claim or action.
+2. Route stakes before judging evidence.
+3. If the router returns `fast_exit`, emit the full pipeline envelope with a
+   judge fast exit and `action.governed_action = allow`.
+4. If the router returns `assure`, run the judge.
+5. Generate only the minimum operational evidence obligations.
+6. Evaluate only evidence explicitly available in the current invocation.
+7. Produce one final verdict.
+8. Pass `(verdict, stakes_tier)` into the governor.
+9. Return the full envelope and stop.
+
+## Allowed inferences
+
+Reasonable inference is allowed for:
+
+- claim classification
+- coarse domain classification
+- reversibility
+- likely impact scope
+
+Do not infer:
+
+- missing evidence that was never provided
+- approval that was never stated
+- independence between sources that share one pipeline
+- tool reliability without an explicit basis
+
+## Suggested caller behavior after output
+
+If `action.governed_action = allow`, the caller may proceed.
+
+If `action.governed_action = allow_advisory`, the caller should:
+
+- weaken language
+- avoid auto-execution
+- surface uncertainty clearly
+
+If `action.governed_action = require_human`, the caller should:
+
+- prepare the recommendation
+- stop short of final execution or definitive approval
+- route to human review
+
+If `action.governed_action = block`, the caller should:
+
+- not present or execute the requested claim or action
+- use `next_evidence_actions` to explain what would change the result
+
+If `action.governed_action = escalate`, the caller should:
+
+- hand off to a qualified human or specialist owner
+- avoid replacing specialist review with generic extra checks
+
+## Integration defaults
+
+Apply these defaults unless the caller supplies stricter policy:
+
+1. Gate only at conclusion points or before consequential actions.
+2. Prefer small, concrete requirement sets.
+3. Keep requirements operational and artifact-checkable.
+4. Keep next steps bounded to the smallest useful set.
+5. Keep low-risk cases quiet through fast exit.
+6. Keep domain ownership with the caller.
+
+## Editing contract
+
+When changing this skill, keep these contract families aligned:
+
+- Stakes Router:
+  `SKILL.md`, `references/stakes-router.md`, `references/stakes-schema.json`
+- Calibrated Judge:
+  `SKILL.md`, `references/judge-protocol.md`,
+  `references/judge-input-template.md`,
+  `references/judge-output-template.md`,
+  `references/judge-verdict-schema.json`
+- Action Governor:
+  `SKILL.md`, `references/action-governor.md`,
+  `references/action-map.md`, `references/action-output-template.md`,
+  `references/action-schema.json`
+- Pipeline:
+  `SKILL.md`, `references/pipeline-input-template.md`,
+  `references/pipeline-output-template.md`,
+  `references/pipeline-schema.json`
+
+## Quick examples
+
+### Low-risk fast exit
+
+Input:
+
+- "Reformat this JSON file with 2-space indentation."
+
+Expected shape:
+
+- `stakes.routing_decision = fast_exit`
+- `judgment.gate_required = false`
+- `judgment.verdict = PASS`
+- `action.governed_action = allow`
+
+### High-stakes downgrade
+
+Input:
+
+- "Disable the worker queue in production."
+- one correlation chart
+- no rollback proof
+
+Expected shape:
+
+- `stakes.stakes_tier = HIGH`
+- `judgment.verdict = SOFT_PASS` or `BLOCK`
+- `action.governed_action = require_human` or `block`
+
+### Critical escalation
+
+Input:
+
+- "This medical release threshold is safe."
+- one opaque vendor model output
+
+Expected shape:
+
+- `stakes.stakes_tier = CRITICAL`
+- `judgment.verdict = ESCALATE`
+- `action.governed_action = escalate`

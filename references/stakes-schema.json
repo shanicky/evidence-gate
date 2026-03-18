@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DecisionAssuranceStakes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "stakes_tier",
+    "routing_decision",
+    "tier_rationale",
+    "routing_signals"
+  ],
+  "properties": {
+    "stakes_tier": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    },
+    "routing_decision": {
+      "type": "string",
+      "enum": ["fast_exit", "assure"]
+    },
+    "tier_rationale": {
+      "type": "string"
+    },
+    "routing_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "routing_decision": {
+            "const": "fast_exit"
+          }
+        },
+        "required": ["routing_decision"]
+      },
+      "then": {
+        "properties": {
+          "stakes_tier": {
+            "const": "LOW"
+          }
+        }
+      }
+    }
+  ]
+}
