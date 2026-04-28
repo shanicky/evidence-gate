@@ -1,0 +1,51 @@
+policy_pack:
+  id: "sre-prod-v1"
+  version: "1.0.0"
+  domain: "sre"
+  description: "Production SRE assurance policy"
+
+  tier_overrides:
+    - match:
+        impact_profile.scope: "production"
+        execution_mode: "auto"
+      minimum_tier: "HIGH"
+    - match:
+        impact_profile.blast_radius:
+          - "multi_service"
+          - "org_wide"
+      minimum_tier: "CRITICAL"
+
+  requirement_library:
+    - id: "req-rollback"
+      description: "Verified rollback path exists"
+      mandatory: true
+      acceptable_kinds:
+        - "test"
+        - "reproduction"
+        - "policy"
+      applies_when:
+        claim_type: "action"
+        impact_profile.reversibility:
+          - "hard"
+          - "irreversible"
+
+    - id: "req-approval"
+      description: "Accountable owner approval documented"
+      mandatory: true
+      acceptable_kinds:
+        - "approval"
+        - "human_confirmation"
+      applies_when:
+        impact_profile.scope: "production"
+
+  action_map_overrides:
+    - match:
+        verdict: "SOFT_PASS"
+        stakes_tier: "MEDIUM"
+      override_action: "require_human"
+      rationale: "Production-adjacent SOFT_PASS outcomes require human sign-off."
+
+  tool_skepticism_overrides:
+    - tool_type: "observational_query"
+      override_skepticism: "high"
+      rationale: "Dashboard data in this org has known staleness issues."

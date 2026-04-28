@@ -1,6 +1,6 @@
 interface:
-  display_name: "Evidence Gate"
-  short_description: "Gate strong claims with explicit evidence"
-  default_prompt: "Use $evidence-gate to evaluate this claim with explicit evidence and safely downgrade it if the evidence is insufficient."
+  display_name: "Decision Assurance"
+  short_description: "Route strong claims through stakes, evidence, and action governance"
+  default_prompt: "Use $decision-assurance to classify the stakes, judge the explicit evidence, and return the governed action for this claim or recommendation."
 policy:
   allow_implicit_invocation: true

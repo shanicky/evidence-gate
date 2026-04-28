@@ -1,0 +1,25 @@
+case_id,setup,gate_required,verdict,trigger_quality,verdict_quality,requirement_quality,downgrade_quality,next_evidence_usefulness,total_score,notes
+eg-01,baseline,,PASS(implicit),2,2,2,2,2,10,Correctly just does the task
+eg-01,with_evidence_gate,false,PASS,2,2,2,2,2,10,Clean fast exit
+eg-02,baseline,,PASS(implicit),2,2,2,2,2,10,Correctly just does the task
+eg-02,with_evidence_gate,false,PASS,2,2,2,2,2,10,Clean fast exit
+eg-03,baseline,,PASS(implicit),1,2,1,2,2,8,Reaches right conclusion but no structured evidence check
+eg-03,with_evidence_gate,true,PASS,2,2,2,2,2,10,4 requirements all satisfied; clean structured pass
+eg-04,baseline,,SOFT_PASS(implicit),1,1,0,1,1,4,"Leads with 'strongly points toward' then hedges; no structured requirements"
+eg-04,with_evidence_gate,true,SOFT_PASS,2,2,2,2,2,10,Clear downgrade to leading hypothesis; alternatives-checked requirement missing
+eg-05,baseline,,BLOCK(implicit),2,2,1,2,2,9,Strong natural block; mentions backup/deps/approval but unstructured
+eg-05,with_evidence_gate,true,BLOCK,2,2,2,2,2,10,3 requirements all missing; clean block with specific next steps
+eg-06,baseline,,CONFLICT(implicit),2,1,0,1,1,5,Catches competing signals but no structured conflict handling
+eg-06,with_evidence_gate,true,CONFLICT,2,2,2,2,2,10,Isolation=missing correlation=conflicting alternatives=missing; textbook conflict
+eg-07,baseline,,PASS(implicit),1,2,1,2,2,8,Correct conclusion but no explicit evidence audit
+eg-07,with_evidence_gate,true,PASS,2,2,2,2,2,10,4 requirements all satisfied; structured pass
+eg-08,baseline,,SOFT_PASS(implicit),2,2,0,2,1,7,Catches overstatement well but no requirements or contradiction plan
+eg-08,with_evidence_gate,true,SOFT_PASS,2,2,2,2,2,10,Contradiction+replication requirements missing; clean downgrade
+eg-09,baseline,,BLOCK(implicit),2,1,0,1,1,5,"Says 'want more info' but doesn't clearly block; vague next steps"
+eg-09,with_evidence_gate,true,SOFT_PASS,2,1,2,2,2,9,Expected BLOCK but gave SOFT_PASS; treated temporal correlation as causation evidence
+eg-10,baseline,,PASS(implicit),1,2,1,2,2,8,Correct conclusion but no structured evidence check
+eg-10,with_evidence_gate,true,PASS,2,2,2,2,2,10,4 requirements all satisfied; structured pass
+eg-11,baseline,,PASS(implicit),2,2,2,2,2,10,Correctly just does the task
+eg-11,with_evidence_gate,false,PASS,2,2,2,2,2,10,Clean fast exit
+eg-12,baseline,,CONFLICT(implicit),2,1,0,1,1,5,Catches conflict but no structured handling or isolation plan
+eg-12,with_evidence_gate,true,CONFLICT,2,2,2,2,2,10,repro=missing code-path=conflicting alternatives=missing; clean conflict

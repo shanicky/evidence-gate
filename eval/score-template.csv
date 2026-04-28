@@ -1,25 +1,81 @@
-case_id,setup,gate_required,verdict,trigger_quality,verdict_quality,requirement_quality,downgrade_quality,next_evidence_usefulness,total_score,notes
-eg-01,baseline,,PASS(implicit),2,2,2,2,2,10,Correctly just does the task
-eg-01,with_evidence_gate,false,PASS,2,2,2,2,2,10,Clean fast exit
-eg-02,baseline,,PASS(implicit),2,2,2,2,2,10,Correctly just does the task
-eg-02,with_evidence_gate,false,PASS,2,2,2,2,2,10,Clean fast exit
-eg-03,baseline,,PASS(implicit),1,2,1,2,2,8,Reaches right conclusion but no structured evidence check
-eg-03,with_evidence_gate,true,PASS,2,2,2,2,2,10,4 requirements all satisfied; clean structured pass
-eg-04,baseline,,SOFT_PASS(implicit),1,1,0,1,1,4,"Leads with 'strongly points toward' then hedges; no structured requirements"
-eg-04,with_evidence_gate,true,SOFT_PASS,2,2,2,2,2,10,Clear downgrade to leading hypothesis; alternatives-checked requirement missing
-eg-05,baseline,,BLOCK(implicit),2,2,1,2,2,9,Strong natural block; mentions backup/deps/approval but unstructured
-eg-05,with_evidence_gate,true,BLOCK,2,2,2,2,2,10,3 requirements all missing; clean block with specific next steps
-eg-06,baseline,,CONFLICT(implicit),2,1,0,1,1,5,Catches competing signals but no structured conflict handling
-eg-06,with_evidence_gate,true,CONFLICT,2,2,2,2,2,10,Isolation=missing correlation=conflicting alternatives=missing; textbook conflict
-eg-07,baseline,,PASS(implicit),1,2,1,2,2,8,Correct conclusion but no explicit evidence audit
-eg-07,with_evidence_gate,true,PASS,2,2,2,2,2,10,4 requirements all satisfied; structured pass
-eg-08,baseline,,SOFT_PASS(implicit),2,2,0,2,1,7,Catches overstatement well but no requirements or contradiction plan
-eg-08,with_evidence_gate,true,SOFT_PASS,2,2,2,2,2,10,Contradiction+replication requirements missing; clean downgrade
-eg-09,baseline,,BLOCK(implicit),2,1,0,1,1,5,"Says 'want more info' but doesn't clearly block; vague next steps"
-eg-09,with_evidence_gate,true,SOFT_PASS,2,1,2,2,2,9,Expected BLOCK but gave SOFT_PASS; treated temporal correlation as causation evidence
-eg-10,baseline,,PASS(implicit),1,2,1,2,2,8,Correct conclusion but no structured evidence check
-eg-10,with_evidence_gate,true,PASS,2,2,2,2,2,10,4 requirements all satisfied; structured pass
-eg-11,baseline,,PASS(implicit),2,2,2,2,2,10,Correctly just does the task
-eg-11,with_evidence_gate,false,PASS,2,2,2,2,2,10,Clean fast exit
-eg-12,baseline,,CONFLICT(implicit),2,1,0,1,1,5,Catches conflict but no structured handling or isolation plan
-eg-12,with_evidence_gate,true,CONFLICT,2,2,2,2,2,10,repro=missing code-path=conflicting alternatives=missing; clean conflict
+case_id,setup,stakes_tier,routing_decision,gate_required,verdict,governed_action,validation_pass,trigger_quality,stakes_routing_quality,verdict_quality,requirement_quality,downgrade_quality,action_governance_quality,next_evidence_usefulness,invariant_robustness,total_score,notes
+da-01,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-01.baseline.txt
+da-01,with_decision_assurance,LOW,assure,true,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-01.skill.txt
+da-02,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-02.baseline.txt
+da-02,with_decision_assurance,MEDIUM,assure,true,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-02.skill.txt
+da-03,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-03.baseline.txt
+da-03,with_decision_assurance,HIGH,assure,true,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-03.skill.txt
+da-04,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-04.baseline.txt
+da-04,with_decision_assurance,CRITICAL,assure,true,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-04.skill.txt
+da-05,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-05.baseline.txt
+da-05,with_decision_assurance,LOW,assure,true,SOFT_PASS,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210420/responses/da-05.skill.txt
+da-06,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-06.baseline.txt
+da-06,with_decision_assurance,MEDIUM,assure,true,SOFT_PASS,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-06.skill.txt
+da-07,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-07.baseline.txt
+da-07,with_decision_assurance,HIGH,assure,true,CONFLICT,require_human,true,2,2,0,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-07.skill.txt | verdict expected SOFT_PASS got CONFLICT
+da-08,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-08.baseline.txt
+da-08,with_decision_assurance,CRITICAL,assure,true,SOFT_PASS,require_human,true,2,2,0,,,0,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-08.skill.txt | verdict expected BLOCK got SOFT_PASS | governed_action expected block got require_human
+da-09,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-09.baseline.txt
+da-09,with_decision_assurance,LOW,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-09.skill.txt
+da-10,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-10.baseline.txt
+da-10,with_decision_assurance,MEDIUM,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-210801/responses/da-10.skill.txt
+da-11,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-11.baseline.txt
+da-11,with_decision_assurance,HIGH,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-11.skill.txt
+da-12,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-12.baseline.txt
+da-12,with_decision_assurance,CRITICAL,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-12.skill.txt
+da-13,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-13.baseline.txt
+da-13,with_decision_assurance,LOW,assure,true,CONFLICT,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-13.skill.txt
+da-14,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-14.baseline.txt
+da-14,with_decision_assurance,MEDIUM,assure,true,CONFLICT,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-14.skill.txt
+da-15,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-15.baseline.txt
+da-15,with_decision_assurance,HIGH,assure,true,CONFLICT,require_human,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211239/responses/da-15.skill.txt
+da-16,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-16.baseline.txt
+da-16,with_decision_assurance,CRITICAL,assure,true,CONFLICT,require_human,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-16.skill.txt
+da-17,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-17.baseline.txt
+da-17,with_decision_assurance,LOW,assure,true,ESCALATE,escalate,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-17.skill.txt
+da-18,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-18.baseline.txt
+da-18,with_decision_assurance,MEDIUM,assure,true,ESCALATE,escalate,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-18.skill.txt
+da-19,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-19.baseline.txt
+da-19,with_decision_assurance,HIGH,assure,true,ESCALATE,escalate,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-19.skill.txt
+da-20,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-20.baseline.txt
+da-20,with_decision_assurance,CRITICAL,assure,true,ESCALATE,escalate,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211607/responses/da-20.skill.txt
+da-21,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-21.baseline.txt
+da-21,with_decision_assurance,LOW,fast_exit,false,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-21.skill.txt | skill call skipped: runtime fast_exit
+da-22,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-22.baseline.txt
+da-22,with_decision_assurance,LOW,fast_exit,false,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-22.skill.txt | skill call skipped: runtime fast_exit
+da-23,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-23.baseline.txt
+da-23,with_decision_assurance,LOW,fast_exit,false,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-23.skill.txt | skill call skipped: runtime fast_exit
+da-24,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-24.baseline.txt
+da-24,with_decision_assurance,LOW,fast_exit,false,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-24.skill.txt | skill call skipped: runtime fast_exit
+da-25,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-25.baseline.txt
+da-25,with_decision_assurance,MEDIUM,assure,true,SOFT_PASS,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-211942/responses/da-25.skill.txt
+da-26,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-26.baseline.txt
+da-26,with_decision_assurance,MEDIUM,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-26.skill.txt
+da-27,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-27.baseline.txt
+da-27,with_decision_assurance,CRITICAL,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-27.skill.txt
+da-28,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-28.baseline.txt
+da-28,with_decision_assurance,HIGH,assure,true,ESCALATE,escalate,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-28.skill.txt
+da-29,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-29.baseline.txt
+da-29,with_decision_assurance,CRITICAL,assure,true,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-29.skill.txt
+da-30,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-30.baseline.txt
+da-30,with_decision_assurance,CRITICAL,assure,true,CONFLICT,require_human,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212111/responses/da-30.skill.txt
+da-31,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-31.baseline.txt
+da-31,with_decision_assurance,MEDIUM,assure,true,SOFT_PASS,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-31.skill.txt
+da-32,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-32.baseline.txt
+da-32,with_decision_assurance,LOW,assure,true,PASS,allow,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-32.skill.txt
+da-33,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-33.baseline.txt
+da-33,with_decision_assurance,HIGH,assure,true,BLOCK,block,true,2,2,0,,,0,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-33.skill.txt | verdict expected SOFT_PASS got BLOCK | governed_action expected require_human got block
+da-34,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-34.baseline.txt
+da-34,with_decision_assurance,LOW,assure,true,PASS,allow,true,2,2,0,,,0,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-34.skill.txt | verdict expected SOFT_PASS got PASS | governed_action expected allow_advisory got allow
+da-35,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-35.baseline.txt
+da-35,with_decision_assurance,MEDIUM,assure,true,SOFT_PASS,allow_advisory,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212505/responses/da-35.skill.txt
+da-36,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-36.baseline.txt
+da-36,with_decision_assurance,HIGH,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-36.skill.txt
+da-37,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-37.baseline.txt
+da-37,with_decision_assurance,MEDIUM,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-37.skill.txt
+da-38,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-38.baseline.txt
+da-38,with_decision_assurance,CRITICAL,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-38.skill.txt
+da-39,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-39.baseline.txt
+da-39,with_decision_assurance,CRITICAL,assure,true,BLOCK,block,true,2,2,2,,,2,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-39.skill.txt
+da-40,baseline,,,,,,,,,,,,,,,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-40.baseline.txt
+da-40,with_decision_assurance,HIGH,assure,true,BLOCK,block,true,2,2,0,,,0,,2,,Raw response: /Users/shanicky/conductor/workspaces/evidence-gate/osaka/.context/eval-results/20260318-212821/responses/da-40.skill.txt | verdict expected SOFT_PASS got BLOCK | governed_action expected require_human got block

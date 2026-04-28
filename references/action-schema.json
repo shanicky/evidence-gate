@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DecisionAssuranceAction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "governed_action",
+    "audit_record",
+    "caller_instructions"
+  ],
+  "properties": {
+    "governed_action": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "allow_advisory",
+        "require_human",
+        "block",
+        "escalate"
+      ]
+    },
+    "audit_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "policy_source",
+        "decision_basis",
+        "verdict",
+        "stakes_tier",
+        "required_followups"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^(PASS|SOFT_PASS|BLOCK|CONFLICT|ESCALATE):(LOW|MEDIUM|HIGH|CRITICAL)$"
+        },
+        "policy_source": {
+          "type": "string"
+        },
+        "decision_basis": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "SOFT_PASS", "BLOCK", "CONFLICT", "ESCALATE"]
+        },
+        "stakes_tier": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+        },
+        "required_followups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "caller_instructions": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+policy_pack:
+  id: "research-claims-v1"
+  version: "1.0.0"
+  domain: "research"
+  description: "Policy for publishing or summarizing consequential research claims"
+
+  tier_overrides:
+    - match:
+        domain: "research"
+        target_strength: "definitive"
+      minimum_tier: "MEDIUM"
+
+  requirement_library:
+    - id: "req-contradiction-search"
+      description: "Contradiction search completed across at least one independent source."
+      mandatory: true
+      acceptable_kinds:
+        - "search_retrieval"
+        - "external_source"
+      applies_when:
+        domain: "research"
+        target_strength:
+          - "definitive"
+          - "provisional"
+
+    - id: "req-independent-corroboration"
+      description: "At least one independent corroborating source exists for the central claim."
+      mandatory: true
+      acceptable_kinds:
+        - "external_source"
+        - "controlled_test"
+      applies_when:
+        domain: "research"
+        stakes_tier:
+          - "MEDIUM"
+          - "HIGH"
+          - "CRITICAL"
+
+  action_map_overrides:
+    - match:
+        verdict: "SOFT_PASS"
+        stakes_tier: "MEDIUM"
+      override_action: "require_human"
+      rationale: "Publication-adjacent claims require editorial review even after a SOFT_PASS."
+
+  tool_skepticism_overrides:
+    - tool_type: "search_retrieval"
+      override_skepticism: "high"
+      rationale: "Search results alone are not enough for consequential research claims."
